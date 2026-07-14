@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, double, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,4 +25,33 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Real estate agent leads. Pre-loaded from oregon_agents_data.json (isCustom=false)
+ * plus manually added agents (isCustom=true).
+ */
+export const agents = mysqlTable("agents", {
+  id: int("id").autoincrement().primaryKey(),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  brokerage: varchar("brokerage", { length: 255 }),
+  cityArea: varchar("cityArea", { length: 255 }),
+  phone: varchar("phone", { length: 64 }),
+  email: varchar("email", { length: 320 }),
+  websiteBioUrl: text("websiteBioUrl"),
+  zillowUrl: text("zillowUrl"),
+  headshotUrl: text("headshotUrl"),
+  buyerSideTransactions: text("buyerSideTransactions"),
+  salesLast12Months: varchar("salesLast12Months", { length: 255 }),
+  otherProductionStats: text("otherProductionStats"),
+  realtrendsRank: int("realtrendsRank"),
+  realtrendsTotalSides: double("realtrendsTotalSides"),
+  realtrendsVolume: varchar("realtrendsVolume", { length: 64 }),
+  realtrendsVolumeNum: double("realtrendsVolumeNum"),
+  dataSources: text("dataSources"),
+  notes: text("notes"),
+  isCustom: boolean("isCustom").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Agent = typeof agents.$inferSelect;
+export type InsertAgent = typeof agents.$inferInsert;

@@ -40,42 +40,46 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-serif-text: "Cormorant Garamond", Georgia, serif;
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Editorial palette: warm cream ground, near-black ink, oxblood accent */
+  --radius: 0.125rem;
+  --background: oklch(0.966 0.008 85);          /* cream */
+  --foreground: oklch(0.205 0.01 60);            /* ink */
+  --card: oklch(0.978 0.006 85);                 /* lighter cream card */
+  --card-foreground: oklch(0.205 0.01 60);
+  --popover: oklch(0.978 0.006 85);
+  --popover-foreground: oklch(0.205 0.01 60);
+  --primary: oklch(0.235 0.012 60);              /* ink primary */
+  --primary-foreground: oklch(0.966 0.008 85);
+  --secondary: oklch(0.93 0.01 85);
+  --secondary-foreground: oklch(0.3 0.012 60);
+  --muted: oklch(0.93 0.01 85);
+  --muted-foreground: oklch(0.48 0.012 60);
+  --accent: oklch(0.42 0.13 25);                 /* oxblood */
+  --accent-foreground: oklch(0.97 0.006 85);
+  --destructive: oklch(0.5 0.19 27);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --border: oklch(0.205 0.01 60 / 18%);          /* fine ink rules */
+  --input: oklch(0.205 0.01 60 / 25%);
+  --ring: oklch(0.42 0.13 25);
+  --chart-1: oklch(0.42 0.13 25);
+  --chart-2: oklch(0.35 0.012 60);
+  --chart-3: oklch(0.55 0.08 60);
+  --chart-4: oklch(0.65 0.05 85);
+  --chart-5: oklch(0.75 0.03 85);
+  --sidebar: oklch(0.945 0.01 85);               /* slightly deeper cream */
+  --sidebar-foreground: oklch(0.205 0.01 60);
+  --sidebar-primary: oklch(0.235 0.012 60);
+  --sidebar-primary-foreground: oklch(0.966 0.008 85);
+  --sidebar-accent: oklch(0.9 0.012 85);
+  --sidebar-accent-foreground: oklch(0.205 0.01 60);
+  --sidebar-border: oklch(0.205 0.01 60 / 15%);
+  --sidebar-ring: oklch(0.42 0.13 25);
 }
 
 .dark {
@@ -119,6 +123,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -158,6 +167,31 @@
   .flex {
     min-height: 0;
     min-width: 0;
+  }
+
+  /* Editorial display type: massive Didone-style headline */
+  .font-display {
+    font-family: var(--font-serif);
+  }
+  .font-serif-text {
+    font-family: var(--font-serif-text);
+  }
+  /* Small, spaced-out sans-serif details */
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  /* Fine geometric rules */
+  .rule-h {
+    height: 1px;
+    background: var(--border);
+  }
+  .rule-thick {
+    height: 3px;
+    background: var(--foreground);
   }
 
   @media (min-width: 640px) {

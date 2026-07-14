@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { agents, InsertAgent, InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,51 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ---------------------------------------------------------------------------
+// Agent queries
+// ---------------------------------------------------------------------------
+
+export async function listAgents() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(agents);
+}
+
+export async function getAgentById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(agents).where(eq(agents.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createAgent(agent: InsertAgent) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(agents).values(agent);
+  return result[0].insertId;
+}
+
+export async function updateAgentNotes(id: number, notes: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(agents).set({ notes }).where(eq(agents.id, id));
+}
+
+export async function updateAgent(id: number, fields: Partial<InsertAgent>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(agents).set(fields).where(eq(agents.id, id));
+}
+
+export async function deleteAgent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(agents).where(eq(agents.id, id));
+}
+
+export async function countAgents() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select({ id: agents.id }).from(agents);
+  return rows.length;
+}
