@@ -41,4 +41,15 @@
 - [x] New Office Rankings view/tab: rank 1-60, brokerage, city, principal broker (name+headshot), est. annual buyside transactions, linked agents
 - [x] Office Rankings searchable by brokerage, city, or principal broker name; sortable columns
 - [x] CSV export includes new office/broker fields
-- [ ] Tests updated/added; checkpoint + redeploy
+- [x] Tests updated/added; checkpoint + redeploy
+
+## Update 2: 50-state support (July 2026)
+
+- [x] Schema: add `state` column to agents; migrate; backfill existing 60 agents with "Oregon"
+- [x] Backend: agents.list, officeRankings, exportCsv accept state filter; export supports all-states option
+- [x] Sidebar/header state picker listing all 50 states (Oregon default, no data added for others)
+- [x] Dashboard + Office Rankings filter by selected state; empty-state message "No agents loaded yet for [State]"
+- [x] Dynamic header title "[Selected State] Agent Leads — Mike Ford"
+- [x] Add Agent form: state field defaulting to selected state
+- [x] CSV export includes State column; exports current state's agents with all-states option
+- [ ] Tests updated; checkpoint + redeploy

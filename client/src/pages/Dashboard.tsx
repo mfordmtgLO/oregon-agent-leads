@@ -28,11 +28,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import { useSelectedState } from "@/contexts/StateContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Agent } from "../../../drizzle/schema";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronDown,
   Download,
   ExternalLink,
   Globe,
@@ -86,12 +94,12 @@ function compare(a: Agent, b: Agent, key: SortKey): number {
   }
 }
 
-function downloadCsv(csv: string) {
+function downloadCsv(csv: string, label: string) {
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `oregon-agent-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `${label}-agent-leads-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -99,7 +107,8 @@ function downloadCsv(csv: string) {
 }
 
 export default function Dashboard() {
-  const { data: agents, isLoading } = trpc.agents.list.useQuery();
+  const { state } = useSelectedState();
+  const { data: agents, isLoading } = trpc.agents.list.useQuery({ state });
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<ScopeFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
@@ -109,8 +118,11 @@ export default function Dashboard() {
   const utils = trpc.useUtils();
 
   const exportMutation = trpc.agents.exportCsv.useMutation({
-    onSuccess: data => {
-      downloadCsv(data.csv);
+    onSuccess: (data, variables) => {
+      downloadCsv(
+        data.csv,
+        variables?.state ? variables.state.toLowerCase().replace(/\s+/g, "-") : "all-states",
+      );
       toast.success(`Exported ${data.count} agents to CSV`);
     },
     onError: err => toast.error(err.message || "Export failed"),
@@ -118,7 +130,7 @@ export default function Dashboard() {
 
   const deleteMutation = trpc.agents.delete.useMutation({
     onSuccess: () => {
-      utils.agents.list.invalidate();
+      utils.agents.invalidate();
       setDetailAgent(null);
       toast.success("Agent removed");
     },
@@ -169,24 +181,42 @@ export default function Dashboard() {
             Agent <span className="italic font-medium">Directory</span>
           </h2>
           <p className="font-serif-text text-xl italic text-muted-foreground mt-3">
-            {agents ? `${agents.length} agents on record` : "Loading records"} · RealTrends
-            Verified 2026 · Buyer-side production 2023–present
+            {agents ? `${agents.length} agents on record in ${state}` : "Loading records"} ·
+            RealTrends Verified 2026 · Buyer-side production 2023–present
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => exportMutation.mutate()}
-            disabled={exportMutation.isPending}
-            className="rounded-none eyebrow border-foreground/30 hover:bg-foreground hover:text-background h-10"
-          >
-            {exportMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Export CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={exportMutation.isPending}
+                className="rounded-none eyebrow border-foreground/30 hover:bg-foreground hover:text-background h-10"
+              >
+                {exportMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export CSV
+                <ChevronDown className="h-3.5 w-3.5 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-none">
+              <DropdownMenuItem
+                className="eyebrow rounded-none cursor-pointer"
+                onClick={() => exportMutation.mutate({ state })}
+              >
+                {state} only
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="eyebrow rounded-none cursor-pointer"
+                onClick={() => exportMutation.mutate({})}
+              >
+                All states
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Link href="/add">
             <Button className="rounded-none eyebrow bg-foreground text-background hover:bg-accent hover:text-accent-foreground h-10">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -275,10 +305,29 @@ export default function Dashboard() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="border border-dashed border-foreground/25 py-20 text-center">
-          <p className="font-display text-3xl font-bold mb-2">No agents found</p>
-          <p className="font-serif-text text-lg italic text-muted-foreground">
-            Try a different search term or clear the filter.
-          </p>
+          {agents && agents.length === 0 ? (
+            <>
+              <p className="font-display text-3xl font-bold mb-2">
+                No agents loaded yet for {state}
+              </p>
+              <p className="font-serif-text text-lg italic text-muted-foreground mb-6">
+                This territory is ready for data. Add agents manually or switch back to Oregon.
+              </p>
+              <Link href="/add">
+                <Button className="rounded-none eyebrow bg-foreground text-background hover:bg-accent hover:text-accent-foreground">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add First {state} Agent
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="font-display text-3xl font-bold mb-2">No agents found</p>
+              <p className="font-serif-text text-lg italic text-muted-foreground">
+                Try a different search term or clear the filter.
+              </p>
+            </>
+          )}
         </div>
       ) : view === "cards" ? (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">

@@ -93,9 +93,10 @@ export async function getUserByOpenId(openId: string) {
 // Agent queries
 // ---------------------------------------------------------------------------
 
-export async function listAgents() {
+export async function listAgents(state?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  if (state) return db.select().from(agents).where(eq(agents.state, state));
   return db.select().from(agents);
 }
 

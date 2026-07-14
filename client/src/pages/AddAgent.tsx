@@ -2,12 +2,21 @@ import AgentAvatar from "@/components/AgentAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useSelectedState } from "@/contexts/StateContext";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { US_STATES, type USState } from "@shared/states";
 
 const emptyForm = {
   fullName: "",
@@ -22,7 +31,9 @@ const emptyForm = {
 };
 
 export default function AddAgent() {
+  const { state: selectedState } = useSelectedState();
   const [form, setForm] = useState(emptyForm);
+  const [agentState, setAgentState] = useState<USState>(selectedState);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [, setLocation] = useLocation();
@@ -31,8 +42,8 @@ export default function AddAgent() {
   const uploadMutation = trpc.agents.uploadHeadshot.useMutation();
   const createMutation = trpc.agents.create.useMutation({
     onSuccess: () => {
-      utils.agents.list.invalidate();
-      toast.success(`${form.fullName} added to the index`);
+      utils.agents.invalidate();
+      toast.success(`${form.fullName} added to the ${agentState} index`);
       setLocation("/");
     },
     onError: err => toast.error(err.message || "Failed to add agent"),
@@ -78,7 +89,7 @@ export default function AddAgent() {
       toast.error("Agent name is required");
       return;
     }
-    createMutation.mutate(form);
+    createMutation.mutate({ ...form, state: agentState });
   };
 
   const fieldClass =
@@ -155,6 +166,21 @@ export default function AddAgent() {
           <div className="space-y-2">
             <Label htmlFor="brokerage" className="eyebrow text-muted-foreground">Brokerage</Label>
             <Input id="brokerage" value={form.brokerage} onChange={set("brokerage")} placeholder="Keller Williams Realty" className={fieldClass} />
+          </div>
+          <div className="space-y-2">
+            <Label className="eyebrow text-muted-foreground">State</Label>
+            <Select value={agentState} onValueChange={v => setAgentState(v as USState)}>
+              <SelectTrigger className="rounded-none border-0 border-b border-input bg-transparent px-0 focus:ring-0 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-none max-h-72">
+                {US_STATES.map(s => (
+                  <SelectItem key={s} value={s} className="rounded-none">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="cityArea" className="eyebrow text-muted-foreground">City / Area</Label>

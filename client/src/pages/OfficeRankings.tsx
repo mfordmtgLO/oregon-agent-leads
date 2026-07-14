@@ -1,4 +1,5 @@
 import AgentAvatar from "@/components/AgentAvatar";
+import { useSelectedState } from "@/contexts/StateContext";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -87,7 +88,8 @@ function SortHeader({
 }
 
 export default function OfficeRankings() {
-  const { data: offices, isLoading } = trpc.agents.officeRankings.useQuery();
+  const { state } = useSelectedState();
+  const { data: offices, isLoading } = trpc.agents.officeRankings.useQuery({ state });
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<ScopeFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
@@ -131,8 +133,8 @@ export default function OfficeRankings() {
           Office <span className="italic font-medium">Rankings</span>
         </h2>
         <p className="font-serif-text text-xl italic text-muted-foreground mt-3">
-          {offices ? `${offices.length} offices ranked 1–60` : "Loading records"} · by estimated
-          annual buyer-side transactions · principal brokers on file
+          {offices ? `${offices.length} ${state} offices ranked by production` : "Loading records"}{" "}
+          · by estimated annual buyer-side transactions · principal brokers on file
         </p>
       </div>
 
@@ -178,10 +180,23 @@ export default function OfficeRankings() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="border border-dashed border-foreground/25 py-20 text-center">
-          <p className="font-display text-3xl font-bold mb-2">No offices found</p>
-          <p className="font-serif-text text-lg italic text-muted-foreground">
-            Try a different search term or clear the filter.
-          </p>
+          {offices && offices.length === 0 ? (
+            <>
+              <p className="font-display text-3xl font-bold mb-2">
+                No offices loaded yet for {state}
+              </p>
+              <p className="font-serif-text text-lg italic text-muted-foreground">
+                Office rankings appear once agents with office data are added for this territory.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-display text-3xl font-bold mb-2">No offices found</p>
+              <p className="font-serif-text text-lg italic text-muted-foreground">
+                Try a different search term or clear the filter.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="border border-foreground/15 overflow-x-auto bg-card">

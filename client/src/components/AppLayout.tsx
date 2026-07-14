@@ -1,7 +1,16 @@
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useSelectedState } from "@/contexts/StateContext";
 import { useAppSession } from "@/hooks/useAppSession";
 import Login from "@/pages/Login";
-import { Building2, LayoutGrid, Loader2, LogOut, UserPlus } from "lucide-react";
+import { Building2, LayoutGrid, Loader2, LogOut, MapPin, UserPlus } from "lucide-react";
+import { US_STATES, type USState } from "@shared/states";
 import { Link, useLocation } from "wouter";
 
 const navItems = [
@@ -12,6 +21,7 @@ const navItems = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { loading, authenticated, logout } = useAppSession();
+  const { state, setState } = useSelectedState();
   const [location] = useLocation();
 
   if (loading) {
@@ -37,7 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <p className="eyebrow text-accent mb-3">Private Dossier</p>
           <Link href="/">
             <h1 className="font-display text-3xl xl:text-4xl font-extrabold leading-[1.02] tracking-tight cursor-pointer">
-              Oregon
+              {state}
               <br />
               Agent
               <br />
@@ -52,6 +62,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               Mortgage Loan Officer
             </span>
           </p>
+          <div className="mt-5">
+            <p className="eyebrow text-muted-foreground mb-2 flex items-center gap-1.5">
+              <MapPin className="h-3 w-3" /> Territory
+            </p>
+            <Select value={state} onValueChange={v => setState(v as USState)}>
+              <SelectTrigger className="rounded-none border-foreground/25 bg-card eyebrow h-9 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-none max-h-72">
+                {US_STATES.map(s => (
+                  <SelectItem key={s} value={s} className="rounded-none">
+                    {s}
+                    {s === "Oregon" ? " · 60" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <nav className="px-6 lg:px-8 pb-6 flex lg:flex-col gap-1 lg:gap-2 flex-1">
@@ -105,7 +133,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="px-6 md:px-10 pt-6 pb-0">
           <div className="flex items-end justify-between pb-3">
             <span className="eyebrow text-muted-foreground">
-              Oregon Agent Leads — Mike Ford
+              {state} Agent Leads — Mike Ford
             </span>
             <span className="eyebrow text-muted-foreground hidden sm:block">
               {new Date().toLocaleDateString("en-US", {

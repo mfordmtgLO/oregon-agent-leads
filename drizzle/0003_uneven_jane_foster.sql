@@ -1,0 +1,1 @@
+ALTER TABLE `agents` ADD `state` varchar(32) DEFAULT 'Oregon' NOT NULL;

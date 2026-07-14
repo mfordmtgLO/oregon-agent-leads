@@ -10,6 +10,7 @@ function csvEscape(value: unknown): string {
 
 export const CSV_HEADERS = [
   "Full Name",
+  "State",
   "Brokerage",
   "City / Area",
   "Phone",
@@ -38,6 +39,7 @@ export function agentsToCsv(agents: Agent[]): string {
   const rows = agents.map(a =>
     [
       a.fullName,
+      a.state,
       a.brokerage,
       a.cityArea,
       a.phone,

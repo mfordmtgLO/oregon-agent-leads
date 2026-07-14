@@ -15,6 +15,9 @@ import {
 import { agentsToCsv } from "./csv";
 import * as db from "./db";
 import { storagePut } from "./storage";
+import { DEFAULT_STATE, US_STATES } from "@shared/states";
+
+const stateSchema = z.enum(US_STATES);
 
 function getAppSessionCookie(req: { headers: { cookie?: string } }): string | undefined {
   const raw = req.headers.cookie;
@@ -33,6 +36,7 @@ const sessionProcedure = publicProcedure.use(({ ctx, next }) => {
 
 const agentInputSchema = z.object({
   fullName: z.string().min(1, "Name is required").max(255),
+  state: stateSchema.optional().default(DEFAULT_STATE),
   brokerage: z.string().max(255).optional().default(""),
   cityArea: z.string().max(255).optional().default(""),
   phone: z.string().max(64).optional().default(""),
@@ -97,14 +101,18 @@ export const appRouter = router({
   }),
 
   agents: router({
-    list: sessionProcedure.query(() => db.listAgents()),
+    list: sessionProcedure
+      .input(z.object({ state: stateSchema.optional() }).optional())
+      .query(({ input }) => db.listAgents(input?.state)),
     /** Treat placeholder strings like "Not found" as missing values. */
     /**
      * Office rankings: group agents by office (brokerage + rank), ranked 1-60
      * by estimated annual buyside transactions. Agents sharing an office share a rank.
      */
-    officeRankings: sessionProcedure.query(async () => {
-      const all = await db.listAgents();
+    officeRankings: sessionProcedure
+      .input(z.object({ state: stateSchema.optional() }).optional())
+      .query(async ({ input }) => {
+      const all = await db.listAgents(input?.state);
       const clean = (v: string | null): string | null =>
         v && !/^not\s+found$/i.test(v.trim()) ? v : null;
       const withOffice = all.filter(a => a.officeBuysideRank !== null);
@@ -193,8 +201,10 @@ export const appRouter = router({
         await db.deleteAgent(input.id);
         return { success: true } as const;
       }),
-    exportCsv: sessionProcedure.mutation(async () => {
-      const all = await db.listAgents();
+    exportCsv: sessionProcedure
+      .input(z.object({ state: stateSchema.optional() }).optional())
+      .mutation(async ({ input }) => {
+      const all = await db.listAgents(input?.state);
       const sorted = [...all].sort((a, b) => {
         const ra = a.realtrendsRank ?? Number.MAX_SAFE_INTEGER;
         const rb = b.realtrendsRank ?? Number.MAX_SAFE_INTEGER;

@@ -32,6 +32,8 @@ export type InsertUser = typeof users.$inferInsert;
 export const agents = mysqlTable("agents", {
   id: int("id").autoincrement().primaryKey(),
   fullName: varchar("fullName", { length: 255 }).notNull(),
+  /** US state this agent belongs to, e.g. "Oregon". Only Oregon has data today. */
+  state: varchar("state", { length: 32 }).default("Oregon").notNull(),
   brokerage: varchar("brokerage", { length: 255 }),
   cityArea: varchar("cityArea", { length: 255 }),
   phone: varchar("phone", { length: 64 }),
