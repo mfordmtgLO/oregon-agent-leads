@@ -31,4 +31,14 @@
 ## Quality
 - [x] Vitest unit tests (auth, agents CRUD, CSV export)
 - [x] Visual verification via screenshots
-- [ ] Checkpoint + deploy to public URL
+- [x] Checkpoint + deploy to public URL (https://oregonleads-bqkuz5cc.manus.space, verified live: login works, 60 agents served)
+
+## Office / Principal Broker Update (July 2026)
+- [x] Review office_broker_data.json structure and match entries to agents by agent_name
+- [x] Extend agents schema (or add offices table) with principal broker name/phone/email/headshot, office buyside transactions estimate, office buyside rank
+- [x] Migrate schema and seed office/broker data from JSON (60 rows updated, 0 unmatched, 60 unique ranks)
+- [x] Show Principal Broker section on agent card, table row, and Full Profile dialog
+- [x] New Office Rankings view/tab: rank 1-60, brokerage, city, principal broker (name+headshot), est. annual buyside transactions, linked agents
+- [x] Office Rankings searchable by brokerage, city, or principal broker name; sortable columns
+- [x] CSV export includes new office/broker fields
+- [ ] Tests updated/added; checkpoint + redeploy

@@ -7,12 +7,14 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AddAgent from "./pages/AddAgent";
 import Dashboard from "./pages/Dashboard";
+import OfficeRankings from "./pages/OfficeRankings";
 
 function Router() {
   return (
     <AppLayout>
       <Switch>
         <Route path={"/"} component={Dashboard} />
+        <Route path={"/offices"} component={OfficeRankings} />
         <Route path={"/add"} component={AddAgent} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}

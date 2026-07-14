@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { useAppSession } from "@/hooks/useAppSession";
 import Login from "@/pages/Login";
-import { LayoutGrid, Loader2, LogOut, UserPlus } from "lucide-react";
+import { Building2, LayoutGrid, Loader2, LogOut, UserPlus } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 const navItems = [
   { label: "Agent Index", path: "/", icon: LayoutGrid },
+  { label: "Office Rankings", path: "/offices", icon: Building2 },
   { label: "Add Agent", path: "/add", icon: UserPlus },
 ];
 

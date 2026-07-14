@@ -1,4 +1,5 @@
 import AgentAvatar from "@/components/AgentAvatar";
+import BrokerSection from "@/components/BrokerSection";
 import NotesEditor from "@/components/NotesEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -341,6 +342,12 @@ export default function Dashboard() {
                   <p className="font-serif-text text-lg leading-relaxed">{detailFresh.otherProductionStats}</p>
                 </div>
               )}
+              {detailFresh.principalBrokerName && (
+                <>
+                  <div className="rule-h" />
+                  <BrokerSection agent={detailFresh} />
+                </>
+              )}
               <div className="rule-h" />
               <NotesEditor agentId={detailFresh.id} initialNotes={detailFresh.notes} />
               {detailFresh.isCustom && (
@@ -498,6 +505,24 @@ function AgentCard({
         <div className="space-y-1.5 text-sm">
           <ContactRows agent={agent} />
         </div>
+        {agent.principalBrokerName && (
+          <div className="border border-foreground/10 bg-secondary/40 px-3 py-2.5">
+            <p className="eyebrow text-muted-foreground mb-1">Principal Broker</p>
+            <div className="flex items-center gap-2.5">
+              <AgentAvatar
+                src={agent.principalBrokerHeadshotUrl}
+                name={agent.principalBrokerName}
+                className="h-8 w-8 shrink-0 border border-foreground/15 text-[0.45rem]"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-tight truncate">{agent.principalBrokerName}</p>
+                <p className="text-xs text-muted-foreground leading-tight">
+                  Office No. {agent.officeBuysideRank ?? "—"} · ~{agent.officeBuysideTransactions ?? "—"} buyside/yr
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="mt-auto pt-2">
           <NotesEditor agentId={agent.id} initialNotes={agent.notes} compact />
         </div>
@@ -572,6 +597,7 @@ function AgentTableView({
             <TableHead className="eyebrow text-muted-foreground">Contact</TableHead>
             <SortHeader label="Sides '25" k="sides" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="Volume '25" k="volume" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <TableHead className="eyebrow text-muted-foreground">Principal Broker</TableHead>
             <TableHead className="eyebrow text-muted-foreground">Links</TableHead>
             <TableHead className="eyebrow text-muted-foreground">Notes</TableHead>
           </TableRow>
@@ -617,6 +643,27 @@ function AgentTableView({
               </TableCell>
               <TableCell className="font-display font-bold whitespace-nowrap">
                 {agent.realtrendsVolume || "—"}
+              </TableCell>
+              <TableCell>
+                {agent.principalBrokerName ? (
+                  <div className="flex items-center gap-2.5">
+                    <AgentAvatar
+                      src={agent.principalBrokerHeadshotUrl}
+                      name={agent.principalBrokerName}
+                      className="h-9 w-9 shrink-0 border border-foreground/15 text-[0.45rem]"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-tight whitespace-nowrap">
+                        {agent.principalBrokerName}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-tight whitespace-nowrap">
+                        Office No. {agent.officeBuysideRank ?? "—"} · ~{agent.officeBuysideTransactions ?? "—"}/yr
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex gap-2">

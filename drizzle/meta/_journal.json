@@ -15,6 +15,13 @@
       "when": 1783988666617,
       "tag": "0001_stormy_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784002093198,
+      "tag": "0002_omniscient_paibok",
+      "breakpoints": true
     }
   ]
 }

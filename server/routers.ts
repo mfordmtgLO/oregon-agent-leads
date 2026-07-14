@@ -98,6 +98,55 @@ export const appRouter = router({
 
   agents: router({
     list: sessionProcedure.query(() => db.listAgents()),
+    /** Treat placeholder strings like "Not found" as missing values. */
+    /**
+     * Office rankings: group agents by office (brokerage + rank), ranked 1-60
+     * by estimated annual buyside transactions. Agents sharing an office share a rank.
+     */
+    officeRankings: sessionProcedure.query(async () => {
+      const all = await db.listAgents();
+      const clean = (v: string | null): string | null =>
+        v && !/^not\s+found$/i.test(v.trim()) ? v : null;
+      const withOffice = all.filter(a => a.officeBuysideRank !== null);
+      const byOffice = new Map<
+        string,
+        {
+          officeBuysideRank: number;
+          brokerage: string | null;
+          cityArea: string | null;
+          principalBrokerName: string | null;
+          principalBrokerTitle: string | null;
+          principalBrokerPhone: string | null;
+          principalBrokerEmail: string | null;
+          principalBrokerHeadshotUrl: string | null;
+          officeBuysideTransactions: number | null;
+          officeDataConfidence: string | null;
+          agents: { id: number; fullName: string; headshotUrl: string | null }[];
+        }
+      >();
+      for (const a of withOffice) {
+        const key = `${a.officeBuysideRank}::${a.brokerage ?? ""}::${a.principalBrokerName ?? ""}`;
+        const existing = byOffice.get(key);
+        if (existing) {
+          existing.agents.push({ id: a.id, fullName: a.fullName, headshotUrl: a.headshotUrl });
+        } else {
+          byOffice.set(key, {
+            officeBuysideRank: a.officeBuysideRank!,
+            brokerage: a.brokerage,
+            cityArea: a.cityArea,
+            principalBrokerName: clean(a.principalBrokerName),
+            principalBrokerTitle: clean(a.principalBrokerTitle),
+            principalBrokerPhone: clean(a.principalBrokerPhone),
+            principalBrokerEmail: clean(a.principalBrokerEmail),
+            principalBrokerHeadshotUrl: clean(a.principalBrokerHeadshotUrl),
+            officeBuysideTransactions: a.officeBuysideTransactions,
+            officeDataConfidence: a.officeDataConfidence,
+            agents: [{ id: a.id, fullName: a.fullName, headshotUrl: a.headshotUrl }],
+          });
+        }
+      }
+      return Array.from(byOffice.values()).sort((x, y) => x.officeBuysideRank - y.officeBuysideRank);
+    }),
     get: sessionProcedure
       .input(z.object({ id: z.number().int() }))
       .query(async ({ input }) => {
