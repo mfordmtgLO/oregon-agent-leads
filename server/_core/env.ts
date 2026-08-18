@@ -7,4 +7,6 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  /** Shared bearer token for the owner-approved dashboard-to-directory agent sync. */
+  agentSyncToken: process.env.AGENT_SYNC_TOKEN ?? "",
 };

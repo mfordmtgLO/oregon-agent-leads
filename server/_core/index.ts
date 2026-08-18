@@ -8,6 +8,9 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { ENV } from "./env";
+import { isAuthorizedSyncRequest, toOregonAgentSyncExport } from "../syncExport";
+import * as db from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,6 +39,21 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  app.get("/api/sync/agents", async (req, res) => {
+    if (!isAuthorizedSyncRequest(req.header("authorization"), ENV.agentSyncToken)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (req.query.state !== "Oregon") {
+      return res.status(400).json({ error: "Only Oregon is currently supported" });
+    }
+    try {
+      const agents = await db.listAgents("Oregon");
+      return res.json(toOregonAgentSyncExport(agents));
+    } catch (error) {
+      console.error("[AgentSync] Failed to prepare Oregon export", error);
+      return res.status(503).json({ error: "Oregon agent export is unavailable" });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",
