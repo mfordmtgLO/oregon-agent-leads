@@ -52,4 +52,9 @@
 - [x] Dynamic header title "[Selected State] Agent Leads — Mike Ford"
 - [x] Add Agent form: state field defaulting to selected state
 - [x] CSV export includes State column; exports current state's agents with all-states option
-- [ ] Tests updated; checkpoint + redeploy
+- [x] Tests updated; checkpoint + redeploy
+
+## GitHub Sync (Aug 18, 2026)
+
+- [x] Pull latest from GitHub main (commits: "Add protected Oregon agent sync export", "Update index.html")
+- [x] Verify synced working copy matches remote, typecheck clean, 31/31 tests passing
