@@ -58,3 +58,5 @@
 
 - [x] Pull latest from GitHub main (commits: "Add protected Oregon agent sync export", "Update index.html")
 - [x] Verify synced working copy matches remote, typecheck clean, 31/31 tests passing
+- [x] Pull "Add sync rank totals and source profile links" (rankTotal + sourceProfileUrl/principalBrokerProfileUrl in sync export; ?agent=<id> deep link opens profile dialog)
+- [x] Verify second sync: typecheck clean, 31/31 tests passing, deep link ?agent=1 opens Dirk Hmura profile
