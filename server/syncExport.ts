@@ -64,6 +64,13 @@ export function isAuthorizedSyncRequest(authorization: string | undefined, expec
 export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()): OregonAgentSyncExport {
   const oregonAgents = rows.filter((agent) => agent.state === "Oregon");
   const publicBaseUrl = "https://oregonleads-bqkuz5cc.manus.space";
+  const sourceProfileUrl = (agentId: number) => `${publicBaseUrl}/?agent=${agentId}`;
+  const principalBrokerProfileUrl = (principalBrokerName: unknown) => {
+    if (typeof principalBrokerName !== "string" || !principalBrokerName.trim()) return null;
+    const normalizedName = principalBrokerName.trim().toLowerCase();
+    const match = oregonAgents.find((candidate) => candidate.fullName.trim().toLowerCase() === normalizedName);
+    return match ? sourceProfileUrl(match.id) : null;
+  };
   const agents = oregonAgents
     .sort((a, b) => (a.realtrendsRank ?? Number.MAX_SAFE_INTEGER) - (b.realtrendsRank ?? Number.MAX_SAFE_INTEGER))
     .map((agent) => ({
@@ -91,10 +98,8 @@ export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()):
       principalBrokerPhone: agent.principalBrokerPhone,
       principalBrokerEmail: agent.principalBrokerEmail,
       principalBrokerHeadshotUrl: agent.principalBrokerHeadshotUrl,
-      sourceProfileUrl: `${publicBaseUrl}/?agent=${agent.id}`,
-      principalBrokerProfileUrl: agent.principalBrokerName
-        ? `${publicBaseUrl}/?agent=${oregonAgents.find((candidate) => candidate.fullName.trim().toLowerCase() === agent.principalBrokerName!.trim().toLowerCase())?.id ?? ""}`
-        : null,
+      sourceProfileUrl: sourceProfileUrl(agent.id),
+      principalBrokerProfileUrl: principalBrokerProfileUrl(agent.principalBrokerName),
       officeBuysideTransactions: agent.officeBuysideTransactions,
       officeBuysideRank: agent.officeBuysideRank,
       officeEstimationNotes: agent.officeEstimationNotes,
