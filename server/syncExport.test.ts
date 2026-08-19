@@ -124,7 +124,7 @@ describe("Oregon direct agent sync export", () => {
 
   it("derives one standalone principal-broker record per named broker", () => {
     const row = {
-      id: 12, state: "Oregon", fullName: "Top Agent", realtrendsRank: 1, brokerage: "Example Realty", cityArea: "Salem", phone: null, email: null,
+      id: 12, state: "Oregon", fullName: "Top Agent", realtrendsRank: 87, brokerage: "Example Realty", cityArea: "Salem", phone: null, email: null,
       websiteBioUrl: null, zillowUrl: null, headshotUrl: null, buyerSideTransactions: null, salesLast12Months: null, otherProductionStats: null,
       realtrendsTotalSides: null, realtrendsVolume: null, realtrendsVolumeNum: null, dataSources: null,
       principalBrokerName: "Tiffany Johnson", principalBrokerTitle: "Managing Principal Broker", principalBrokerPhone: "541-555-0100", principalBrokerEmail: "tiffany@example.test", principalBrokerHeadshotUrl: "https://example.test/tiffany.jpg",
@@ -133,7 +133,7 @@ describe("Oregon direct agent sync export", () => {
     } as never;
     const payload = toOregonAgentSyncExport([row] as never);
     expect(payload).toMatchObject({ count: 2, topAgentCount: 1, principalBrokerCount: 1 });
-    expect(payload.agents[1]).toMatchObject({ fullName: "Tiffany Johnson", recordType: "principal_broker", rankKind: "office", realtrendsRank: 23, rankTotal: 23 });
+    expect(payload.agents[1]).toMatchObject({ fullName: "Tiffany Johnson", recordType: "principal_broker", rankKind: "office", realtrendsRank: 23, rankTotal: 87 });
     expect(payload.agents[1].sourceProfileUrl).toContain("principalBroker=Tiffany");
   });
 });

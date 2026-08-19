@@ -50,7 +50,7 @@ describe("principal broker profile links", () => {
     );
   });
 
-  it("returns null for blank or missing broker names, never a dangling query param", () => {
+  it("returns null for blank or missing broker names, never a dangling query parameter", () => {
     const rows = [
       makeAgent({ id: 2, fullName: "B", realtrendsRank: 2, principalBrokerName: "   " }),
       makeAgent({ id: 3, fullName: "C", realtrendsRank: 3, principalBrokerName: null }),
@@ -63,11 +63,11 @@ describe("principal broker profile links", () => {
     }
   });
 
-  it("emits one deduplicated principal_broker record per broker, ranked by office rank", () => {
+  it("emits one deduplicated principal_broker record per broker, ranked by office rank against the full source pool", () => {
     const rows = [
       makeAgent({ id: 1, fullName: "A", realtrendsRank: 1, principalBrokerName: "Jim Sparkman", officeBuysideRank: 24 }),
       makeAgent({ id: 2, fullName: "B", realtrendsRank: 2, principalBrokerName: "jim sparkman", officeBuysideRank: 25 }),
-      makeAgent({ id: 3, fullName: "C", realtrendsRank: 3, principalBrokerName: "Jim Remley", officeBuysideRank: 2 }),
+      makeAgent({ id: 3, fullName: "C", realtrendsRank: 87, principalBrokerName: "Jim Remley", officeBuysideRank: 2 }),
     ];
     const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
     const brokers = payload.agents.filter(record => record.recordType === "principal_broker");
@@ -75,10 +75,8 @@ describe("principal broker profile links", () => {
     expect(payload.topAgentCount).toBe(3);
     expect(payload.principalBrokerCount).toBe(2);
     expect(payload.count).toBe(payload.topAgentCount + payload.principalBrokerCount);
-    // Case-insensitive dedupe keeps the first spelling encountered
     expect(brokers.map(broker => broker.fullName)).toEqual(["Jim Remley", "Jim Sparkman"]);
-    expect(brokers.every(broker => broker.rankKind === "office")).toBe(true);
-    // Broker records carry unique, stable, non-colliding ids distinct from agent ids
+    expect(brokers.every(broker => broker.rankKind === "office" && broker.rankTotal === 87)).toBe(true);
     const ids = payload.agents.map(record => record.sourceAgentId);
     expect(new Set(ids).size).toBe(ids.length);
     expect(brokers.every(broker => broker.sourceAgentId < 0)).toBe(true);

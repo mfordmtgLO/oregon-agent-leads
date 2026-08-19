@@ -77,10 +77,6 @@ export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()):
     oregonAgents.length,
     ...oregonAgents.map((agent) => agent.realtrendsRank ?? 0)
   );
-  const officeRankTotal = Math.max(
-    0,
-    ...oregonAgents.map((agent) => agent.officeBuysideRank ?? 0)
-  );
   const publicBaseUrl = "https://oregonleads-bqkuz5cc.manus.space";
   const sourceProfileUrl = (agentId: number) => `${publicBaseUrl}/?agent=${agentId}`;
   const principalBrokerProfileUrl = (principalBrokerName: unknown) => {
@@ -150,7 +146,10 @@ export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()):
       salesLast12Months: null,
       otherProductionStats: null,
       realtrendsRank: agent.officeBuysideRank,
-      rankTotal: officeRankTotal,
+      // Office placement is a broker-specific ranking, but the dashboard's
+      // visible denominator is the complete Oregon source pool so Office #23
+      // remains comparable to every available source profile.
+      rankTotal: agentRankTotal,
       realtrendsTotalSides: agent.officeBuysideTransactions,
       realtrendsVolume: null,
       realtrendsVolumeNum: null,
