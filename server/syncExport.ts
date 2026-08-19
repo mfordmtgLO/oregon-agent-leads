@@ -63,6 +63,10 @@ export function isAuthorizedSyncRequest(authorization: string | undefined, expec
 
 export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()): OregonAgentSyncExport {
   const oregonAgents = rows.filter((agent) => agent.state === "Oregon");
+  const rankTotal = Math.max(
+    oregonAgents.length,
+    ...oregonAgents.map((agent) => agent.realtrendsRank ?? 0)
+  );
   const publicBaseUrl = "https://oregonleads-bqkuz5cc.manus.space";
   const sourceProfileUrl = (agentId: number) => `${publicBaseUrl}/?agent=${agentId}`;
   const principalBrokerProfileUrl = (principalBrokerName: unknown) => {
@@ -88,7 +92,7 @@ export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()):
       salesLast12Months: agent.salesLast12Months,
       otherProductionStats: agent.otherProductionStats,
       realtrendsRank: agent.realtrendsRank,
-      rankTotal: oregonAgents.length,
+      rankTotal,
       realtrendsTotalSides: agent.realtrendsTotalSides,
       realtrendsVolume: agent.realtrendsVolume,
       realtrendsVolumeNum: agent.realtrendsVolumeNum,
