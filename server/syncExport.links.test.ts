@@ -70,3 +70,34 @@ describe("principal broker profile links", () => {
     }
   });
 });
+
+describe("rankTotal denominator", () => {
+  it("uses the agent count when no rank exceeds it", () => {
+    const rows = [
+      makeAgent({ id: 1, fullName: "A", realtrendsRank: 1 }),
+      makeAgent({ id: 2, fullName: "B", realtrendsRank: 2 }),
+      makeAgent({ id: 3, fullName: "C", realtrendsRank: 3 }),
+    ];
+    const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
+    expect(payload.agents.every((agent) => agent.rankTotal === 3)).toBe(true);
+  });
+
+  it("uses the highest rank when ranks exceed the agent count (tied ranks / partial list)", () => {
+    const rows = [
+      makeAgent({ id: 1, fullName: "A", realtrendsRank: 10 }),
+      makeAgent({ id: 2, fullName: "B", realtrendsRank: 10 }),
+      makeAgent({ id: 3, fullName: "C", realtrendsRank: 60 }),
+    ];
+    const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
+    expect(payload.agents.every((agent) => agent.rankTotal === 60)).toBe(true);
+  });
+
+  it("falls back to the agent count when ranks are missing", () => {
+    const rows = [
+      makeAgent({ id: 1, fullName: "A", realtrendsRank: null }),
+      makeAgent({ id: 2, fullName: "B", realtrendsRank: null }),
+    ];
+    const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
+    expect(payload.agents.every((agent) => agent.rankTotal === 2)).toBe(true);
+  });
+});

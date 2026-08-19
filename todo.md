@@ -63,3 +63,4 @@
 - [x] Redeploy synced build and verify live: login OK, 60 Oregon agents, 60 offices, /api/sync/agents returns 200 with rankTotal + sourceProfileUrl (401 without/with bad token), deep link opens profile
 - [x] Known issue from synced code: principalBrokerProfileUrl ends in "?agent=" when the principal broker is not an agent in the list (should be null) — fixed upstream by "Harden principal broker sync links"
 - [x] Pull "Harden principal broker sync links"; added server/syncExport.links.test.ts regression tests (34/34 passing)
+- [x] Pull "Fix Oregon sync rank denominator" (rankTotal now max of agent count and highest rank); added rankTotal regression tests (37/37 passing)
