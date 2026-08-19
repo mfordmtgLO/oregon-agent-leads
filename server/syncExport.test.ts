@@ -117,8 +117,23 @@ describe("Oregon direct agent sync export", () => {
 
     const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-18T00:00:00.000Z"));
 
-    expect(payload).toMatchObject({ source: "oregon-agent-leads", state: "Oregon", count: 2 });
+    expect(payload).toMatchObject({ source: "oregon-agent-leads", state: "Oregon", count: 2, topAgentCount: 2, principalBrokerCount: 0 });
     expect(payload.agents.map((agent) => agent.fullName)).toEqual(["First Oregon Agent", "Second Oregon Agent"]);
     expect(payload.agents[0]).toMatchObject({ sourceAgentId: 1, headshotUrl: "https://example.test/headshot.jpg" });
+  });
+
+  it("derives one standalone principal-broker record per named broker", () => {
+    const row = {
+      id: 12, state: "Oregon", fullName: "Top Agent", realtrendsRank: 1, brokerage: "Example Realty", cityArea: "Salem", phone: null, email: null,
+      websiteBioUrl: null, zillowUrl: null, headshotUrl: null, buyerSideTransactions: null, salesLast12Months: null, otherProductionStats: null,
+      realtrendsTotalSides: null, realtrendsVolume: null, realtrendsVolumeNum: null, dataSources: null,
+      principalBrokerName: "Tiffany Johnson", principalBrokerTitle: "Managing Principal Broker", principalBrokerPhone: "541-555-0100", principalBrokerEmail: "tiffany@example.test", principalBrokerHeadshotUrl: "https://example.test/tiffany.jpg",
+      officeBuysideTransactions: 325, officeBuysideRank: 23, officeEstimationNotes: null, officeDataConfidence: null, officeDataSources: null,
+      notes: null, isCustom: false, createdAt: new Date(), updatedAt: new Date(),
+    } as never;
+    const payload = toOregonAgentSyncExport([row] as never);
+    expect(payload).toMatchObject({ count: 2, topAgentCount: 1, principalBrokerCount: 1 });
+    expect(payload.agents[1]).toMatchObject({ fullName: "Tiffany Johnson", recordType: "principal_broker", rankKind: "office", realtrendsRank: 23, rankTotal: 23 });
+    expect(payload.agents[1].sourceProfileUrl).toContain("principalBroker=Tiffany");
   });
 });

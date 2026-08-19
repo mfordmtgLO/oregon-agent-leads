@@ -65,6 +65,35 @@ type SortDir = "asc" | "desc";
 type ViewMode = "cards" | "table";
 type ScopeFilter = "all" | "name" | "city" | "brokerage";
 
+function stableBrokerId(name: string) {
+  let hash = 5381;
+  for (const char of name.toLowerCase()) hash = ((hash * 33) ^ char.charCodeAt(0)) >>> 0;
+  return -Math.max(1, hash % 2_000_000_000);
+}
+
+function derivePrincipalBrokerDirectory(agents: Agent[]): Agent[] {
+  const records = new Map<string, Agent>();
+  for (const agent of agents) {
+    const name = agent.principalBrokerName?.trim();
+    if (!name || records.has(name.toLowerCase())) continue;
+    records.set(name.toLowerCase(), {
+      ...agent,
+      id: stableBrokerId(name),
+      fullName: name,
+      phone: agent.principalBrokerPhone,
+      email: agent.principalBrokerEmail,
+      headshotUrl: agent.principalBrokerHeadshotUrl,
+      realtrendsRank: agent.officeBuysideRank,
+      realtrendsTotalSides: agent.officeBuysideTransactions,
+      principalBrokerName: null,
+      principalBrokerTitle: null,
+      notes: agent.officeEstimationNotes,
+      isCustom: false,
+    });
+  }
+  return Array.from(records.values()).sort((a, b) => (a.realtrendsRank ?? Number.MAX_SAFE_INTEGER) - (b.realtrendsRank ?? Number.MAX_SAFE_INTEGER) || a.fullName.localeCompare(b.fullName));
+}
+
 const sortLabels: Record<SortKey, string> = {
   rank: "RealTrends Rank",
   name: "Name",
@@ -115,13 +144,20 @@ export default function Dashboard() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [view, setView] = useState<ViewMode>("cards");
   const [detailAgent, setDetailAgent] = useState<Agent | null>(null);
+  const principalBrokers = useMemo(() => derivePrincipalBrokerDirectory(agents ?? []), [agents]);
+  const directoryRecords = useMemo(() => [...(agents ?? []), ...principalBrokers], [agents, principalBrokers]);
 
   useEffect(() => {
-    const agentId = Number(new URLSearchParams(window.location.search).get("agent"));
-    if (!agentId || !agents) return;
-    const linkedAgent = agents.find((agent) => agent.id === agentId);
-    if (linkedAgent) setDetailAgent(linkedAgent);
-  }, [agents]);
+    if (!agents) return;
+    const params = new URLSearchParams(window.location.search);
+    const agentId = Number(params.get("agent"));
+    const principalBroker = params.get("principalBroker")?.trim().toLowerCase();
+    const linkedAgent = agentId ? agents.find((agent) => agent.id === agentId) : undefined;
+    if (linkedAgent) return setDetailAgent(linkedAgent);
+    if (!principalBroker) return;
+    const brokerRecord = principalBrokers.find((agent) => agent.fullName.trim().toLowerCase() === principalBroker);
+    if (brokerRecord) setDetailAgent(brokerRecord);
+  }, [agents, principalBrokers]);
   const utils = trpc.useUtils();
 
   const exportMutation = trpc.agents.exportCsv.useMutation({
@@ -147,7 +183,7 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     if (!agents) return [];
     const q = query.trim().toLowerCase();
-    let list = agents;
+    let list = directoryRecords;
     if (q) {
       list = agents.filter(a => {
         const name = a.fullName.toLowerCase();
@@ -162,7 +198,7 @@ export default function Dashboard() {
     const sorted = [...list].sort((a, b) => compare(a, b, sortKey));
     if (sortDir === "desc") sorted.reverse();
     return sorted;
-  }, [agents, query, scope, sortKey, sortDir]);
+  }, [agents, directoryRecords, query, scope, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -174,8 +210,8 @@ export default function Dashboard() {
   };
 
   const detailFresh = useMemo(
-    () => (detailAgent ? (agents?.find(a => a.id === detailAgent.id) ?? detailAgent) : null),
-    [detailAgent, agents],
+    () => (detailAgent ? (directoryRecords.find(a => a.id === detailAgent.id) ?? detailAgent) : null),
+    [detailAgent, directoryRecords],
   );
 
   return (
@@ -188,7 +224,7 @@ export default function Dashboard() {
             Agent <span className="italic font-medium">Directory</span>
           </h2>
           <p className="font-serif-text text-xl italic text-muted-foreground mt-3">
-            {agents ? `${agents.length} agents on record in ${state}` : "Loading records"} ·
+            {agents ? `${agents.length} top agents + ${principalBrokers.length} principal brokers on record in ${state}` : "Loading records"} ·
             RealTrends Verified 2026 · Buyer-side production 2023–present
           </p>
         </div>
