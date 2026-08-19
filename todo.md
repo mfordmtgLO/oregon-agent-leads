@@ -60,3 +60,5 @@
 - [x] Verify synced working copy matches remote, typecheck clean, 31/31 tests passing
 - [x] Pull "Add sync rank totals and source profile links" (rankTotal + sourceProfileUrl/principalBrokerProfileUrl in sync export; ?agent=<id> deep link opens profile dialog)
 - [x] Verify second sync: typecheck clean, 31/31 tests passing, deep link ?agent=1 opens Dirk Hmura profile
+- [x] Redeploy synced build and verify live: login OK, 60 Oregon agents, 60 offices, /api/sync/agents returns 200 with rankTotal + sourceProfileUrl (401 without/with bad token), deep link opens profile
+- [ ] Known issue from synced code: principalBrokerProfileUrl ends in "?agent=" when the principal broker is not an agent in the list (should be null)
