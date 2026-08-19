@@ -9,6 +9,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import AddAgent from "./pages/AddAgent";
 import Dashboard from "./pages/Dashboard";
 import OfficeRankings from "./pages/OfficeRankings";
+import ReviewQueue from "./pages/ReviewQueue";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Switch>
         <Route path={"/"} component={Dashboard} />
         <Route path={"/offices"} component={OfficeRankings} />
+        <Route path={"/review"} component={ReviewQueue} />
         <Route path={"/add"} component={AddAgent} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}

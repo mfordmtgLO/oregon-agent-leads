@@ -73,3 +73,23 @@
 - [x] Fix 4: distinct rank badge for brokers ("Office No. N") so agent/office ranks don't collide; sidebar territory count reflects agents + brokers
 - [x] Add vitest coverage for broker-record derivation (search inclusion, no inherited links) — 10 new tests, 48/48 passing
 - [x] Verify in browser, checkpoint, and confirm live
+- [x] Deploy broker-display fixes to production and verify on the live URL (bundle index-CGxrQHcY.js, Oregon · 97, office-labeled broker dialog, no inherited links)
+
+## Update Current Top Agents (verification queue)
+
+- [x] Schema: agent_verifications + verification_runs tables (proposed changes, status, source, evidence) + migration applied
+- [x] Server: verification engine that fetches each agent's profile/brokerage page and compares brokerage + principal broker
+- [x] Server: procedures — run, queue, runs, runDetail, approve, reject, ingest
+- [x] Rank policy: ranks stay RealTrends 2026; recompute only when production figures change on approval
+- [x] UI: "Update Current Top Agents" button with progress/result summary
+- [x] UI: Needs Review queue showing on-record vs found, evidence link, approve/reject per item
+- [x] Handle unverifiable results explicitly (blocked/dead page) rather than silently passing
+- [x] Tests for engine comparison logic, queue procedures, and rank recompute (42 new tests, 90/90 passing)
+- [x] Fixed false "blocked" verdicts (reCAPTCHA i18n strings matched in raw HTML)
+- [x] Fixed false brokerage-change verdict (generic single-word name matched inside prose)
+- [x] Fixed missed match for closed-up brand spellings (RE/MAX Power Pros vs REMAX PowerPros)
+- [x] Clear test-run findings from the queue so Mike sees only real results
+- [x] Verify Review Queue behaviour — sweep exercised live via curl on the dev server (10 agents: 4 confirmed, 6 unverified) and covered by UI-contract tests for queue fields, approve, dismiss, acknowledge, territory scoping, and the sweep itself; preview host is captcha-walled so in-browser clicking is pending live verification
+- [ ] Checkpoint + publish, then verify on the live URL
+- [ ] Research pass on 60 agents to populate the first queue with real findings
+- [ ] Ingest findings, verify populated queue, deliver

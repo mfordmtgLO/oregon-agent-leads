@@ -9,7 +9,7 @@ import {
 import { useSelectedState } from "@/contexts/StateContext";
 import { useAppSession } from "@/hooks/useAppSession";
 import Login from "@/pages/Login";
-import { Building2, LayoutGrid, Loader2, LogOut, MapPin, UserPlus } from "lucide-react";
+import { Building2, LayoutGrid, Loader2, LogOut, MapPin, RefreshCw, UserPlus } from "lucide-react";
 import { US_STATES, type USState } from "@shared/states";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -19,6 +19,7 @@ import { useMemo } from "react";
 const navItems = [
   { label: "Agent Index", path: "/", icon: LayoutGrid },
   { label: "Office Rankings", path: "/offices", icon: Building2 },
+  { label: "Update Agents", path: "/review", icon: RefreshCw },
   { label: "Add Agent", path: "/add", icon: UserPlus },
 ];
 
@@ -35,6 +36,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     () => (oregonAgents ? buildDirectory(oregonAgents).length : null),
     [oregonAgents],
   );
+  // Badge the "Update Agents" nav item with how many findings await a decision.
+  const { data: pendingQueue } = trpc.verification.queue.useQuery(
+    { state },
+    { enabled: authenticated },
+  );
+  const pendingCount = pendingQueue?.length ?? 0;
 
   if (loading) {
     return (
@@ -109,6 +116,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <item.icon className="h-4 w-4" strokeWidth={1.75} />
                   {item.label}
+                  {item.path === "/review" && pendingCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 bg-accent text-accent-foreground text-[10px] font-sans font-semibold tracking-wide">
+                      {pendingCount}
+                    </span>
+                  )}
                 </span>
               </Link>
             );

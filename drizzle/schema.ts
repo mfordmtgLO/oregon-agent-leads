@@ -68,3 +68,77 @@ export const agents = mysqlTable("agents", {
 
 export type Agent = typeof agents.$inferSelect;
 export type InsertAgent = typeof agents.$inferInsert;
+
+/**
+ * One row per "Update Current Top Agents" run. Groups the findings produced by
+ * a single sweep so the dashboard can show "last checked" and per-run summaries.
+ *
+ * `source` distinguishes how the sweep was performed:
+ *  - "automated": server-side fetch + compare, triggered from the dashboard button
+ *  - "research":  findings pushed in via the token-protected sync endpoint after
+ *                 an external (Manus session) research pass
+ */
+export const verificationRuns = mysqlTable("verification_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  state: varchar("state", { length: 32 }).default("Oregon").notNull(),
+  source: mysqlEnum("source", ["automated", "research"]).default("automated").notNull(),
+  status: mysqlEnum("status", ["running", "complete", "failed"]).default("running").notNull(),
+  agentsChecked: int("agentsChecked").default(0).notNull(),
+  confirmedCount: int("confirmedCount").default(0).notNull(),
+  changedCount: int("changedCount").default(0).notNull(),
+  unverifiedCount: int("unverifiedCount").default(0).notNull(),
+  errorMessage: text("errorMessage"),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  finishedAt: timestamp("finishedAt"),
+});
+
+export type VerificationRun = typeof verificationRuns.$inferSelect;
+export type InsertVerificationRun = typeof verificationRuns.$inferInsert;
+
+/**
+ * A single finding about one agent from one verification run.
+ *
+ * Findings are never applied automatically — Mike approves or rejects each one.
+ * `proposed*` columns hold only the fields that differ from the agent record.
+ * Ranks are NEVER researched: realtrends figures stay as supplied, and rank is
+ * recomputed from production numbers only when those numbers change on approval.
+ */
+export const agentVerifications = mysqlTable("agent_verifications", {
+  id: int("id").autoincrement().primaryKey(),
+  runId: int("runId").notNull(),
+  agentId: int("agentId").notNull(),
+  /** Snapshot of the agent name at check time, so the queue reads well even if the record changes. */
+  agentName: varchar("agentName", { length: 255 }).notNull(),
+  outcome: mysqlEnum("outcome", ["confirmed", "changed", "unverified"]).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "auto"]).default("pending").notNull(),
+  /** What we had on record when the check ran. */
+  recordedBrokerage: varchar("recordedBrokerage", { length: 255 }),
+  recordedPrincipalBroker: varchar("recordedPrincipalBroker", { length: 255 }),
+  recordedCityArea: varchar("recordedCityArea", { length: 255 }),
+  /** What the check found. Null means "no change proposed for this field". */
+  proposedBrokerage: varchar("proposedBrokerage", { length: 255 }),
+  proposedPrincipalBroker: varchar("proposedPrincipalBroker", { length: 255 }),
+  proposedPrincipalBrokerPhone: varchar("proposedPrincipalBrokerPhone", { length: 64 }),
+  proposedPrincipalBrokerEmail: varchar("proposedPrincipalBrokerEmail", { length: 320 }),
+  proposedPrincipalBrokerHeadshotUrl: text("proposedPrincipalBrokerHeadshotUrl"),
+  proposedCityArea: varchar("proposedCityArea", { length: 255 }),
+  proposedPhone: varchar("proposedPhone", { length: 64 }),
+  proposedEmail: varchar("proposedEmail", { length: 320 }),
+  proposedWebsiteBioUrl: text("proposedWebsiteBioUrl"),
+  proposedZillowUrl: text("proposedZillowUrl"),
+  /** Optional updated production figures (research source only). Rank recomputes if these change. */
+  proposedTotalSides: double("proposedTotalSides"),
+  proposedVolumeNum: double("proposedVolumeNum"),
+  proposedVolume: varchar("proposedVolume", { length: 64 }),
+  /** Why the checker reached this outcome, shown verbatim in the review queue. */
+  evidenceNote: text("evidenceNote"),
+  evidenceUrl: text("evidenceUrl"),
+  /** "blocked" | "not_found" | "no_source" | "fetch_error" — only set when outcome=unverified. */
+  unverifiedReason: varchar("unverifiedReason", { length: 64 }),
+  confidence: varchar("confidence", { length: 32 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+});
+
+export type AgentVerification = typeof agentVerifications.$inferSelect;
+export type InsertAgentVerification = typeof agentVerifications.$inferInsert;

@@ -16,6 +16,11 @@ import { agentsToCsv } from "./csv";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { DEFAULT_STATE, US_STATES } from "@shared/states";
+import {
+  ingestResearchFindings,
+  researchFindingSchema,
+  verificationProcedures,
+} from "./verificationRouter";
 
 const stateSchema = z.enum(US_STATES);
 
@@ -224,6 +229,36 @@ export const appRouter = router({
         const { url } = await storagePut(key, buffer, input.mimeType);
         return { url } as const;
       }),
+  }),
+
+  /** "Update Current Top Agents" verification queue. */
+  verification: router({
+    /** Trigger an automated sweep of the selected state's agents. */
+    run: sessionProcedure
+      .input(z.object({ state: stateSchema.optional(), limit: z.number().int().min(1).max(200).optional() }).optional())
+      .mutation(({ input }) => verificationProcedures.run(input?.state ?? DEFAULT_STATE, input?.limit)),
+    /** Findings awaiting a decision. */
+    queue: sessionProcedure
+      .input(z.object({ state: stateSchema.optional() }).optional())
+      .query(({ input }) => db.listPendingVerifications(input?.state)),
+    /** Recent run history, for the "last checked" line. */
+    runs: sessionProcedure
+      .input(z.object({ state: stateSchema.optional() }).optional())
+      .query(({ input }) => db.listVerificationRuns(input?.state ?? DEFAULT_STATE, 10)),
+    /** All findings from one run, including confirmations. */
+    runDetail: sessionProcedure
+      .input(z.object({ runId: z.number().int() }))
+      .query(({ input }) => db.listVerificationsByRun(input.runId)),
+    approve: sessionProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(({ input }) => verificationProcedures.approve(input.id)),
+    reject: sessionProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(({ input }) => verificationProcedures.reject(input.id)),
+    /** Ingest findings from an external research pass. */
+    ingest: sessionProcedure
+      .input(z.object({ state: stateSchema.optional(), findings: z.array(researchFindingSchema) }))
+      .mutation(({ input }) => ingestResearchFindings(input.state ?? DEFAULT_STATE, input.findings)),
   }),
 });
 

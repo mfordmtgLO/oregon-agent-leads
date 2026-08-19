@@ -1,6 +1,15 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { agents, InsertAgent, InsertUser, users } from "../drizzle/schema";
+import {
+  agents,
+  agentVerifications,
+  InsertAgent,
+  InsertAgentVerification,
+  InsertUser,
+  InsertVerificationRun,
+  users,
+  verificationRuns,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -137,4 +146,104 @@ export async function countAgents() {
   if (!db) throw new Error("Database not available");
   const rows = await db.select({ id: agents.id }).from(agents);
   return rows.length;
+}
+
+// ---------------------------------------------------------------------------
+// Verification queries
+// ---------------------------------------------------------------------------
+
+export async function createVerificationRun(run: InsertVerificationRun) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(verificationRuns).values(run);
+  return result[0].insertId;
+}
+
+export async function updateVerificationRun(id: number, fields: Partial<InsertVerificationRun>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(verificationRuns).set(fields).where(eq(verificationRuns.id, id));
+}
+
+export async function getVerificationRun(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(verificationRuns).where(eq(verificationRuns.id, id)).limit(1);
+  return rows.length > 0 ? rows[0] : undefined;
+}
+
+/** Most recent runs for a state, newest first. */
+export async function listVerificationRuns(state: string, limit = 10) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(verificationRuns)
+    .where(eq(verificationRuns.state, state))
+    .orderBy(desc(verificationRuns.startedAt))
+    .limit(limit);
+}
+
+export async function insertVerifications(rows: InsertAgentVerification[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (rows.length === 0) return;
+  await db.insert(agentVerifications).values(rows);
+}
+
+/** Findings for one run (all outcomes). */
+export async function listVerificationsByRun(runId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(agentVerifications)
+    .where(eq(agentVerifications.runId, runId))
+    .orderBy(desc(agentVerifications.id));
+}
+
+/** Everything still awaiting Mike's decision, newest first. */
+export async function listPendingVerifications(state?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ v: agentVerifications, agentState: agents.state })
+    .from(agentVerifications)
+    .leftJoin(agents, eq(agentVerifications.agentId, agents.id))
+    .where(eq(agentVerifications.status, "pending"))
+    .orderBy(desc(agentVerifications.id));
+  const filtered = state ? rows.filter(r => r.agentState === state) : rows;
+  return filtered.map(r => r.v);
+}
+
+export async function getVerification(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(agentVerifications).where(eq(agentVerifications.id, id)).limit(1);
+  return rows.length > 0 ? rows[0] : undefined;
+}
+
+export async function setVerificationStatus(
+  id: number,
+  status: "pending" | "approved" | "rejected" | "auto",
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(agentVerifications)
+    .set({ status, reviewedAt: new Date() })
+    .where(eq(agentVerifications.id, id));
+}
+
+/** Mark every still-pending finding for a set of agents as superseded (rejected). */
+export async function supersedePendingForAgents(agentIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (agentIds.length === 0) return;
+  await db
+    .update(agentVerifications)
+    .set({ status: "rejected", reviewedAt: new Date() })
+    .where(
+      and(eq(agentVerifications.status, "pending"), inArray(agentVerifications.agentId, agentIds)),
+    );
 }
