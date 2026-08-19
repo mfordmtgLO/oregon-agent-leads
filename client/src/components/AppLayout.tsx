@@ -12,6 +12,9 @@ import Login from "@/pages/Login";
 import { Building2, LayoutGrid, Loader2, LogOut, MapPin, UserPlus } from "lucide-react";
 import { US_STATES, type USState } from "@shared/states";
 import { Link, useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { buildDirectory } from "@shared/brokerDirectory";
+import { useMemo } from "react";
 
 const navItems = [
   { label: "Agent Index", path: "/", icon: LayoutGrid },
@@ -23,6 +26,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { loading, authenticated, logout } = useAppSession();
   const { state, setState } = useSelectedState();
   const [location] = useLocation();
+  // Record counts per territory: agents plus derived principal broker records.
+  const { data: oregonAgents } = trpc.agents.list.useQuery(
+    { state: "Oregon" },
+    { enabled: authenticated },
+  );
+  const oregonRecordCount = useMemo(
+    () => (oregonAgents ? buildDirectory(oregonAgents).length : null),
+    [oregonAgents],
+  );
 
   if (loading) {
     return (
@@ -74,7 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {US_STATES.map(s => (
                   <SelectItem key={s} value={s} className="rounded-none">
                     {s}
-                    {s === "Oregon" ? " · 60" : ""}
+                    {s === "Oregon" && oregonRecordCount ? ` · ${oregonRecordCount}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

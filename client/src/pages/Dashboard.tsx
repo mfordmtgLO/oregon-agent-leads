@@ -35,11 +35,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Agent } from "../../../drizzle/schema";
+import {
+  buildDirectory,
+  filterDirectory,
+  type DirectoryRecord,
+} from "@shared/brokerDirectory";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Building2,
   ChevronDown,
   Download,
   ExternalLink,
@@ -65,51 +70,38 @@ type SortDir = "asc" | "desc";
 type ViewMode = "cards" | "table";
 type ScopeFilter = "all" | "name" | "city" | "brokerage";
 
-function stableBrokerId(name: string) {
-  let hash = 5381;
-  for (const char of name.toLowerCase()) hash = ((hash * 33) ^ char.charCodeAt(0)) >>> 0;
-  return -Math.max(1, hash % 2_000_000_000);
-}
-
-function derivePrincipalBrokerDirectory(agents: Agent[]): Agent[] {
-  const records = new Map<string, Agent>();
-  for (const agent of agents) {
-    const name = agent.principalBrokerName?.trim();
-    if (!name || records.has(name.toLowerCase())) continue;
-    records.set(name.toLowerCase(), {
-      ...agent,
-      id: stableBrokerId(name),
-      fullName: name,
-      phone: agent.principalBrokerPhone,
-      email: agent.principalBrokerEmail,
-      headshotUrl: agent.principalBrokerHeadshotUrl,
-      realtrendsRank: agent.officeBuysideRank,
-      realtrendsTotalSides: agent.officeBuysideTransactions,
-      principalBrokerName: null,
-      principalBrokerTitle: null,
-      notes: agent.officeEstimationNotes,
-      isCustom: false,
-    });
-  }
-  return Array.from(records.values()).sort((a, b) => (a.realtrendsRank ?? Number.MAX_SAFE_INTEGER) - (b.realtrendsRank ?? Number.MAX_SAFE_INTEGER) || a.fullName.localeCompare(b.fullName));
-}
-
 const sortLabels: Record<SortKey, string> = {
-  rank: "RealTrends Rank",
+  rank: "Rank",
   name: "Name",
   city: "City",
   brokerage: "Brokerage",
-  sides: "Total Sides",
+  sides: "Production",
   volume: "Volume",
 };
 
-function compare(a: Agent, b: Agent, key: SortKey): number {
+/**
+ * Agent rows rank by RealTrends agent rank; broker rows have no agent rank, so they sort
+ * by their office buyside rank. Sorting uses whichever rank applies to the row so the two
+ * record types interleave sensibly instead of dumping all brokers at the end.
+ */
+function rankValue(record: DirectoryRecord): number {
+  const rank =
+    record.recordType === "principal_broker" ? record.officeBuysideRank : record.realtrendsRank;
+  return rank ?? Number.MAX_SAFE_INTEGER;
+}
+
+function sidesValue(record: DirectoryRecord): number {
+  const sides =
+    record.recordType === "principal_broker"
+      ? record.officeBuysideTransactions
+      : record.realtrendsTotalSides;
+  return sides ?? -1;
+}
+
+function compare(a: DirectoryRecord, b: DirectoryRecord, key: SortKey): number {
   switch (key) {
-    case "rank": {
-      const ra = a.realtrendsRank ?? Number.MAX_SAFE_INTEGER;
-      const rb = b.realtrendsRank ?? Number.MAX_SAFE_INTEGER;
-      return ra - rb;
-    }
+    case "rank":
+      return rankValue(a) - rankValue(b);
     case "name":
       return a.fullName.localeCompare(b.fullName);
     case "city":
@@ -117,7 +109,7 @@ function compare(a: Agent, b: Agent, key: SortKey): number {
     case "brokerage":
       return (a.brokerage ?? "").localeCompare(b.brokerage ?? "");
     case "sides":
-      return (b.realtrendsTotalSides ?? -1) - (a.realtrendsTotalSides ?? -1);
+      return sidesValue(b) - sidesValue(a);
     case "volume":
       return (b.realtrendsVolumeNum ?? -1) - (a.realtrendsVolumeNum ?? -1);
   }
@@ -143,21 +135,28 @@ export default function Dashboard() {
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [view, setView] = useState<ViewMode>("cards");
-  const [detailAgent, setDetailAgent] = useState<Agent | null>(null);
-  const principalBrokers = useMemo(() => derivePrincipalBrokerDirectory(agents ?? []), [agents]);
-  const directoryRecords = useMemo(() => [...(agents ?? []), ...principalBrokers], [agents, principalBrokers]);
+  const [detailAgent, setDetailAgent] = useState<DirectoryRecord | null>(null);
+  const directoryRecords = useMemo(() => buildDirectory(agents ?? []), [agents]);
+  const principalBrokers = useMemo(
+    () => directoryRecords.filter(record => record.recordType === "principal_broker"),
+    [directoryRecords],
+  );
 
   useEffect(() => {
     if (!agents) return;
     const params = new URLSearchParams(window.location.search);
     const agentId = Number(params.get("agent"));
     const principalBroker = params.get("principalBroker")?.trim().toLowerCase();
-    const linkedAgent = agentId ? agents.find((agent) => agent.id === agentId) : undefined;
+    const linkedAgent = agentId
+      ? directoryRecords.find(record => record.recordType === "agent" && record.id === agentId)
+      : undefined;
     if (linkedAgent) return setDetailAgent(linkedAgent);
     if (!principalBroker) return;
-    const brokerRecord = principalBrokers.find((agent) => agent.fullName.trim().toLowerCase() === principalBroker);
+    const brokerRecord = principalBrokers.find(
+      record => record.fullName.trim().toLowerCase() === principalBroker,
+    );
     if (brokerRecord) setDetailAgent(brokerRecord);
-  }, [agents, principalBrokers]);
+  }, [agents, directoryRecords, principalBrokers]);
   const utils = trpc.useUtils();
 
   const exportMutation = trpc.agents.exportCsv.useMutation({
@@ -182,19 +181,8 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     if (!agents) return [];
-    const q = query.trim().toLowerCase();
-    let list = directoryRecords;
-    if (q) {
-      list = agents.filter(a => {
-        const name = a.fullName.toLowerCase();
-        const city = (a.cityArea ?? "").toLowerCase();
-        const brokerage = (a.brokerage ?? "").toLowerCase();
-        if (scope === "name") return name.includes(q);
-        if (scope === "city") return city.includes(q);
-        if (scope === "brokerage") return brokerage.includes(q);
-        return name.includes(q) || city.includes(q) || brokerage.includes(q);
-      });
-    }
+    // Search covers agents AND principal broker rows.
+    const list = filterDirectory(directoryRecords, query, scope);
     const sorted = [...list].sort((a, b) => compare(a, b, sortKey));
     if (sortDir === "desc") sorted.reverse();
     return sorted;
@@ -395,9 +383,11 @@ export default function Dashboard() {
             <>
               <DialogHeader>
                 <p className="eyebrow text-accent text-left">
-                  {detailFresh.isCustom
-                    ? "Manually Added"
-                    : `RealTrends No. ${detailFresh.realtrendsRank ?? "—"}`}
+                  {detailFresh.recordType === "principal_broker"
+                    ? `Principal Broker · Office No. ${detailFresh.officeBuysideRank ?? "—"}`
+                    : detailFresh.isCustom
+                      ? "Manually Added"
+                      : `RealTrends No. ${detailFresh.realtrendsRank ?? "—"}`}
                 </p>
                 <DialogTitle className="font-display text-4xl font-extrabold text-left">
                   {detailFresh.fullName}
@@ -417,11 +407,35 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="rule-h" />
-              <div className="grid sm:grid-cols-3 gap-4">
-                <StatBlock label="Total Sides 2025" value={detailFresh.realtrendsTotalSides != null ? String(detailFresh.realtrendsTotalSides) : "—"} />
-                <StatBlock label="Volume 2025" value={detailFresh.realtrendsVolume || "—"} />
-                <StatBlock label="Sales Last 12 Mo." value={detailFresh.salesLast12Months || "—"} />
-              </div>
+              {detailFresh.recordType === "principal_broker" ? (
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <StatBlock
+                    label="Office Buyside / Yr (Est.)"
+                    value={
+                      detailFresh.officeBuysideTransactions != null
+                        ? `~${detailFresh.officeBuysideTransactions}`
+                        : "—"
+                    }
+                  />
+                  <StatBlock
+                    label="Office Buyside Rank"
+                    value={detailFresh.officeBuysideRank != null ? `No. ${detailFresh.officeBuysideRank}` : "—"}
+                  />
+                  <StatBlock label="Data Confidence" value={detailFresh.officeDataConfidence || "—"} />
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <StatBlock label="Total Sides 2025" value={detailFresh.realtrendsTotalSides != null ? String(detailFresh.realtrendsTotalSides) : "—"} />
+                  <StatBlock label="Volume 2025" value={detailFresh.realtrendsVolume || "—"} />
+                  <StatBlock label="Sales Last 12 Mo." value={detailFresh.salesLast12Months || "—"} />
+                </div>
+              )}
+              {detailFresh.recordType === "principal_broker" && detailFresh.officeEstimationNotes && (
+                <div>
+                  <p className="eyebrow text-muted-foreground mb-1.5">Office Estimation Methodology</p>
+                  <p className="font-serif-text text-lg leading-relaxed">{detailFresh.officeEstimationNotes}</p>
+                </div>
+              )}
               {detailFresh.buyerSideTransactions && (
                 <div>
                   <p className="eyebrow text-muted-foreground mb-1.5">Buyer-Side Transactions · 2023–Present</p>
@@ -441,7 +455,14 @@ export default function Dashboard() {
                 </>
               )}
               <div className="rule-h" />
-              <NotesEditor agentId={detailFresh.id} initialNotes={detailFresh.notes} />
+              {detailFresh.isDerived ? (
+                <p className="eyebrow text-muted-foreground/70 leading-relaxed">
+                  Notes are saved on individual agent records. Open an agent at this office to log a
+                  conversation.
+                </p>
+              ) : (
+                <NotesEditor agentId={detailFresh.id} initialNotes={detailFresh.notes} />
+              )}
               {detailFresh.isCustom && (
                 <div className="flex justify-end">
                   <Button
@@ -467,7 +488,7 @@ export default function Dashboard() {
   );
 }
 
-function ContactRows({ agent }: { agent: Agent }) {
+function ContactRows({ agent }: { agent: DirectoryRecord }) {
   return (
     <>
       {agent.phone && (
@@ -532,10 +553,11 @@ function AgentCard({
   index,
   onOpen,
 }: {
-  agent: Agent;
+  agent: DirectoryRecord;
   index: number;
   onOpen: () => void;
 }) {
+  const isBroker = agent.recordType === "principal_broker";
   return (
     <article
       className="border border-foreground/15 bg-card flex flex-col group hover:border-foreground/40 transition-colors"
@@ -548,7 +570,14 @@ function AgentCard({
           className="w-full aspect-[4/3] border-b border-foreground/15"
         />
         <div className="absolute top-3 left-3">
-          {agent.isCustom ? (
+          {isBroker ? (
+            agent.officeBuysideRank != null && (
+              <Badge className="rounded-none bg-secondary text-secondary-foreground eyebrow border border-foreground/25">
+                <Building2 className="h-3 w-3 mr-1.5" />
+                Office No. {agent.officeBuysideRank}
+              </Badge>
+            )
+          ) : agent.isCustom ? (
             <Badge className="rounded-none bg-accent text-accent-foreground eyebrow border-0">Added</Badge>
           ) : (
             agent.realtrendsRank != null && (
@@ -558,7 +587,7 @@ function AgentCard({
             )
           )}
         </div>
-        {agent.notes && (
+        {agent.notes && !isBroker && (
           <div className="absolute top-3 right-3">
             <span title="Has notes" className="h-7 w-7 bg-card border border-foreground/20 flex items-center justify-center">
               <StickyNote className="h-3.5 w-3.5 text-accent" />
@@ -573,6 +602,11 @@ function AgentCard({
               {agent.fullName}
             </h3>
           </button>
+          {isBroker && (
+            <p className="eyebrow text-accent mt-1">
+              {agent.principalBrokerTitle || "Principal Broker"}
+            </p>
+          )}
           <p className="font-serif-text text-lg italic text-muted-foreground leading-snug mt-1">
             {agent.brokerage || "Independent"}
           </p>
@@ -582,18 +616,35 @@ function AgentCard({
           </p>
         </div>
         <div className="rule-h" />
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="font-display text-xl font-bold">
-              {agent.realtrendsTotalSides != null ? agent.realtrendsTotalSides : "—"}
-            </p>
-            <p className="eyebrow text-muted-foreground">Sides '25</p>
+        {isBroker ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="font-display text-xl font-bold">
+                {agent.officeBuysideTransactions != null ? `~${agent.officeBuysideTransactions}` : "—"}
+              </p>
+              <p className="eyebrow text-muted-foreground">Office Buyside / Yr</p>
+            </div>
+            <div>
+              <p className="font-display text-xl font-bold">
+                {agent.officeBuysideRank != null ? `No. ${agent.officeBuysideRank}` : "—"}
+              </p>
+              <p className="eyebrow text-muted-foreground">Office Rank</p>
+            </div>
           </div>
-          <div>
-            <p className="font-display text-xl font-bold">{agent.realtrendsVolume || "—"}</p>
-            <p className="eyebrow text-muted-foreground">Volume '25</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="font-display text-xl font-bold">
+                {agent.realtrendsTotalSides != null ? agent.realtrendsTotalSides : "—"}
+              </p>
+              <p className="eyebrow text-muted-foreground">Sides '25</p>
+            </div>
+            <div>
+              <p className="font-display text-xl font-bold">{agent.realtrendsVolume || "—"}</p>
+              <p className="eyebrow text-muted-foreground">Volume '25</p>
+            </div>
           </div>
-        </div>
+        )}
         <div className="space-y-1.5 text-sm">
           <ContactRows agent={agent} />
         </div>
@@ -616,7 +667,13 @@ function AgentCard({
           </div>
         )}
         <div className="mt-auto pt-2">
-          <NotesEditor agentId={agent.id} initialNotes={agent.notes} compact />
+          {isBroker ? (
+            <p className="eyebrow text-muted-foreground/60 leading-relaxed">
+              Office record · notes live on agent profiles
+            </p>
+          ) : (
+            <NotesEditor agentId={agent.id} initialNotes={agent.notes} compact />
+          )}
         </div>
         <Button
           variant="outline"
@@ -624,7 +681,7 @@ function AgentCard({
           onClick={onOpen}
           className="rounded-none eyebrow border-foreground/25 hover:bg-foreground hover:text-background w-full"
         >
-          Full Profile
+          {isBroker ? "Office Profile" : "Full Profile"}
         </Button>
       </div>
     </article>
@@ -671,11 +728,11 @@ function AgentTableView({
   onSort,
   onOpen,
 }: {
-  agents: Agent[];
+  agents: DirectoryRecord[];
   sortKey: SortKey;
   sortDir: SortDir;
   onSort: (k: SortKey) => void;
-  onOpen: (a: Agent) => void;
+  onOpen: (a: DirectoryRecord) => void;
 }) {
   return (
     <div className="border border-foreground/15 overflow-x-auto bg-card">
@@ -687,7 +744,7 @@ function AgentTableView({
             <SortHeader label="Brokerage" k="brokerage" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="City" k="city" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             <TableHead className="eyebrow text-muted-foreground">Contact</TableHead>
-            <SortHeader label="Sides '25" k="sides" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Production" k="sides" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="Volume '25" k="volume" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             <TableHead className="eyebrow text-muted-foreground">Principal Broker</TableHead>
             <TableHead className="eyebrow text-muted-foreground">Links</TableHead>
@@ -695,10 +752,19 @@ function AgentTableView({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {agents.map(agent => (
+          {agents.map(agent => {
+            const isBroker = agent.recordType === "principal_broker";
+            return (
             <TableRow key={agent.id} className="border-foreground/10 hover:bg-secondary/60">
               <TableCell className="font-display font-bold text-lg">
-                {agent.isCustom ? (
+                {isBroker ? (
+                  <span
+                    className="eyebrow text-muted-foreground whitespace-nowrap"
+                    title="Office buyside rank"
+                  >
+                    Office {agent.officeBuysideRank ?? "—"}
+                  </span>
+                ) : agent.isCustom ? (
                   <Badge className="rounded-none bg-accent text-accent-foreground eyebrow border-0">Added</Badge>
                 ) : (
                   (agent.realtrendsRank ?? "—")
@@ -711,8 +777,15 @@ function AgentTableView({
                     name={agent.fullName}
                     className="h-11 w-11 shrink-0 border border-foreground/15 text-[0.5rem]"
                   />
-                  <span className="font-display font-bold text-base group-hover:text-accent transition-colors whitespace-nowrap">
-                    {agent.fullName}
+                  <span className="min-w-0">
+                    <span className="block font-display font-bold text-base group-hover:text-accent transition-colors whitespace-nowrap">
+                      {agent.fullName}
+                    </span>
+                    {isBroker && (
+                      <span className="eyebrow text-accent block">
+                        {agent.principalBrokerTitle || "Principal Broker"}
+                      </span>
+                    )}
                   </span>
                 </button>
               </TableCell>
@@ -731,7 +804,20 @@ function AgentTableView({
                 </div>
               </TableCell>
               <TableCell className="font-display font-bold">
-                {agent.realtrendsTotalSides ?? "—"}
+                {isBroker ? (
+                  agent.officeBuysideTransactions != null ? (
+                    <span className="whitespace-nowrap">
+                      ~{agent.officeBuysideTransactions}
+                      <span className="eyebrow text-muted-foreground font-sans font-normal ml-1">
+                        office buyside/yr
+                      </span>
+                    </span>
+                  ) : (
+                    "—"
+                  )
+                ) : (
+                  (agent.realtrendsTotalSides ?? "—")
+                )}
               </TableCell>
               <TableCell className="font-display font-bold whitespace-nowrap">
                 {agent.realtrendsVolume || "—"}
@@ -784,6 +870,9 @@ function AgentTableView({
                 </div>
               </TableCell>
               <TableCell className="max-w-[200px]">
+                {isBroker ? (
+                  <span className="eyebrow text-muted-foreground/50">Office record</span>
+                ) : (
                 <button
                   onClick={() => onOpen(agent)}
                   className="text-left w-full group"
@@ -799,9 +888,11 @@ function AgentTableView({
                     </span>
                   )}
                 </button>
+                )}
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>

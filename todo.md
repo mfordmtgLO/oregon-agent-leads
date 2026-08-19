@@ -67,6 +67,9 @@
 - [x] Pull "Add principal broker records to Oregon directory sync" (broker records in sync feed + ?principalBroker= deep link + brokers merged into Agent Index)
 - [x] Rewrite 3 superseded broker-link tests to match the new ?principalBroker= scheme and broker records
 - [x] Fix flaky cross-file race in states.test.ts exportCsv count assertion (38/38 passing, 3 consecutive clean runs)
-- [ ] Awaiting user decision: search filter drops broker records (filters `agents` not `directoryRecords`)
-- [ ] Awaiting user decision: broker cards show office buyside numbers under agent labels ("1000 Sides '25") and inherit a co-located agent's website/Zillow links
-- [ ] Awaiting user decision: duplicate rank badges in Agent Index (agent RealTrends rank vs office rank share the badge slot); sidebar pill still says "Oregon · 60" while heading says 97
+- [x] Fix 1: search/filter must include principal broker records (filter directoryRecords, not agents)
+- [x] Fix 2: relabel broker card stats — office buyside/yr instead of "Sides '25"/"Volume '25"
+- [x] Fix 3: remove inherited website/Zillow links from broker records
+- [x] Fix 4: distinct rank badge for brokers ("Office No. N") so agent/office ranks don't collide; sidebar territory count reflects agents + brokers
+- [x] Add vitest coverage for broker-record derivation (search inclusion, no inherited links) — 10 new tests, 48/48 passing
+- [x] Verify in browser, checkpoint, and confirm live
