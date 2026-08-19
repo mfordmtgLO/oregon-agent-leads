@@ -40,34 +40,48 @@ function makeAgent(overrides: Record<string, unknown>) {
 }
 
 describe("principal broker profile links", () => {
-  it("returns null when the principal broker is not an agent in the list", () => {
+  it("points broker links at the principalBroker deep link, encoded, regardless of agent-list membership", () => {
     const rows = [makeAgent({ id: 1, fullName: "Dirk Hmura", principalBrokerName: "Andrew Misk" })];
     const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
-    expect(payload.agents[0].sourceProfileUrl).toMatch(/\/\?agent=1$/);
-    expect(payload.agents[0].principalBrokerProfileUrl).toBeNull();
+    const agentRecord = payload.agents.find(record => record.recordType === "agent")!;
+    expect(agentRecord.sourceProfileUrl).toMatch(/\/\?agent=1$/);
+    expect(agentRecord.principalBrokerProfileUrl).toBe(
+      "https://oregonleads-bqkuz5cc.manus.space/?principalBroker=Andrew%20Misk",
+    );
   });
 
-  it("links to the broker's own record when the broker is also a listed agent", () => {
+  it("returns null for blank or missing broker names, never a dangling query param", () => {
     const rows = [
-      makeAgent({ id: 7, fullName: "Lea Chitwood", realtrendsRank: 2, principalBrokerName: "Lea Chitwood" }),
-      makeAgent({ id: 8, fullName: "Someone Else", realtrendsRank: 3, principalBrokerName: "  lea   " }),
-    ];
-    const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
-    expect(payload.agents[0].principalBrokerProfileUrl).toMatch(/\/\?agent=7$/);
-    // A partial / non-matching name must not produce a dangling link
-    expect(payload.agents[1].principalBrokerProfileUrl).toBeNull();
-  });
-
-  it("never emits a URL ending in a bare agent query param", () => {
-    const rows = [
-      makeAgent({ id: 1, fullName: "A", principalBrokerName: "Unknown Broker" }),
       makeAgent({ id: 2, fullName: "B", realtrendsRank: 2, principalBrokerName: "   " }),
       makeAgent({ id: 3, fullName: "C", realtrendsRank: 3, principalBrokerName: null }),
     ];
     const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
-    for (const agent of payload.agents) {
-      expect(agent.principalBrokerProfileUrl).toBeNull();
+    expect(payload.principalBrokerCount).toBe(0);
+    for (const record of payload.agents) {
+      expect(record.principalBrokerProfileUrl).toBeNull();
+      expect(record.sourceProfileUrl).not.toMatch(/[?&](agent|principalBroker)=$/);
     }
+  });
+
+  it("emits one deduplicated principal_broker record per broker, ranked by office rank", () => {
+    const rows = [
+      makeAgent({ id: 1, fullName: "A", realtrendsRank: 1, principalBrokerName: "Jim Sparkman", officeBuysideRank: 24 }),
+      makeAgent({ id: 2, fullName: "B", realtrendsRank: 2, principalBrokerName: "jim sparkman", officeBuysideRank: 25 }),
+      makeAgent({ id: 3, fullName: "C", realtrendsRank: 3, principalBrokerName: "Jim Remley", officeBuysideRank: 2 }),
+    ];
+    const payload = toOregonAgentSyncExport(rows as never, new Date("2026-08-19T00:00:00.000Z"));
+    const brokers = payload.agents.filter(record => record.recordType === "principal_broker");
+
+    expect(payload.topAgentCount).toBe(3);
+    expect(payload.principalBrokerCount).toBe(2);
+    expect(payload.count).toBe(payload.topAgentCount + payload.principalBrokerCount);
+    // Case-insensitive dedupe keeps the first spelling encountered
+    expect(brokers.map(broker => broker.fullName)).toEqual(["Jim Remley", "Jim Sparkman"]);
+    expect(brokers.every(broker => broker.rankKind === "office")).toBe(true);
+    // Broker records carry unique, stable, non-colliding ids distinct from agent ids
+    const ids = payload.agents.map(record => record.sourceAgentId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(brokers.every(broker => broker.sourceAgentId < 0)).toBe(true);
   });
 });
 

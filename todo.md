@@ -64,3 +64,9 @@
 - [x] Known issue from synced code: principalBrokerProfileUrl ends in "?agent=" when the principal broker is not an agent in the list (should be null) — fixed upstream by "Harden principal broker sync links"
 - [x] Pull "Harden principal broker sync links"; added server/syncExport.links.test.ts regression tests (34/34 passing)
 - [x] Pull "Fix Oregon sync rank denominator" (rankTotal now max of agent count and highest rank); added rankTotal regression tests (37/37 passing)
+- [x] Pull "Add principal broker records to Oregon directory sync" (broker records in sync feed + ?principalBroker= deep link + brokers merged into Agent Index)
+- [x] Rewrite 3 superseded broker-link tests to match the new ?principalBroker= scheme and broker records
+- [x] Fix flaky cross-file race in states.test.ts exportCsv count assertion (38/38 passing, 3 consecutive clean runs)
+- [ ] Awaiting user decision: search filter drops broker records (filters `agents` not `directoryRecords`)
+- [ ] Awaiting user decision: broker cards show office buyside numbers under agent labels ("1000 Sides '25") and inherit a co-located agent's website/Zillow links
+- [ ] Awaiting user decision: duplicate rank badges in Agent Index (agent RealTrends rank vs office rank share the badge slot); sidebar pill still says "Oregon · 60" while heading says 97

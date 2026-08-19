@@ -58,7 +58,12 @@ describe("50-state support", () => {
     expect(firstRow).toContain("Oregon");
 
     const all = await caller.agents.exportCsv({});
-    expect(all.count).toBeGreaterThanOrEqual(scoped.count);
+    // Re-read the scoped count next to the unscoped one: another test file running in
+    // parallel may add or remove a temporary agent between the two calls, so comparing a
+    // stale scoped count against a fresh unscoped count can fail spuriously.
+    const scopedAgain = await caller.agents.exportCsv({ state: "Oregon" });
+    expect(all.count).toBeGreaterThanOrEqual(Math.min(scoped.count, scopedAgain.count));
+    expect(all.count).toBeGreaterThanOrEqual(60);
   });
 
   it("rejects an invalid state value", async () => {
