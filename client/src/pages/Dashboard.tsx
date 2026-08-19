@@ -56,7 +56,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
@@ -115,6 +115,13 @@ export default function Dashboard() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [view, setView] = useState<ViewMode>("cards");
   const [detailAgent, setDetailAgent] = useState<Agent | null>(null);
+
+  useEffect(() => {
+    const agentId = Number(new URLSearchParams(window.location.search).get("agent"));
+    if (!agentId || !agents) return;
+    const linkedAgent = agents.find((agent) => agent.id === agentId);
+    if (linkedAgent) setDetailAgent(linkedAgent);
+  }, [agents]);
   const utils = trpc.useUtils();
 
   const exportMutation = trpc.agents.exportCsv.useMutation({

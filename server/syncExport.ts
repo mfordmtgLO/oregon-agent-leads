@@ -18,6 +18,7 @@ export type OregonAgentSyncProfile = {
   salesLast12Months: string | null;
   otherProductionStats: string | null;
   realtrendsRank: number | null;
+  rankTotal: number;
   realtrendsTotalSides: number | null;
   realtrendsVolume: string | null;
   realtrendsVolumeNum: number | null;
@@ -27,6 +28,8 @@ export type OregonAgentSyncProfile = {
   principalBrokerPhone: string | null;
   principalBrokerEmail: string | null;
   principalBrokerHeadshotUrl: string | null;
+  sourceProfileUrl: string;
+  principalBrokerProfileUrl: string | null;
   officeBuysideTransactions: number | null;
   officeBuysideRank: number | null;
   officeEstimationNotes: string | null;
@@ -59,8 +62,9 @@ export function isAuthorizedSyncRequest(authorization: string | undefined, expec
 }
 
 export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()): OregonAgentSyncExport {
-  const agents = rows
-    .filter((agent) => agent.state === "Oregon")
+  const oregonAgents = rows.filter((agent) => agent.state === "Oregon");
+  const publicBaseUrl = "https://oregonleads-bqkuz5cc.manus.space";
+  const agents = oregonAgents
     .sort((a, b) => (a.realtrendsRank ?? Number.MAX_SAFE_INTEGER) - (b.realtrendsRank ?? Number.MAX_SAFE_INTEGER))
     .map((agent) => ({
       sourceAgentId: agent.id,
@@ -77,6 +81,7 @@ export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()):
       salesLast12Months: agent.salesLast12Months,
       otherProductionStats: agent.otherProductionStats,
       realtrendsRank: agent.realtrendsRank,
+      rankTotal: oregonAgents.length,
       realtrendsTotalSides: agent.realtrendsTotalSides,
       realtrendsVolume: agent.realtrendsVolume,
       realtrendsVolumeNum: agent.realtrendsVolumeNum,
@@ -86,6 +91,10 @@ export function toOregonAgentSyncExport(rows: Agent[], exportedAt = new Date()):
       principalBrokerPhone: agent.principalBrokerPhone,
       principalBrokerEmail: agent.principalBrokerEmail,
       principalBrokerHeadshotUrl: agent.principalBrokerHeadshotUrl,
+      sourceProfileUrl: `${publicBaseUrl}/?agent=${agent.id}`,
+      principalBrokerProfileUrl: agent.principalBrokerName
+        ? `${publicBaseUrl}/?agent=${oregonAgents.find((candidate) => candidate.fullName.trim().toLowerCase() === agent.principalBrokerName!.trim().toLowerCase())?.id ?? ""}`
+        : null,
       officeBuysideTransactions: agent.officeBuysideTransactions,
       officeBuysideRank: agent.officeBuysideRank,
       officeEstimationNotes: agent.officeEstimationNotes,
