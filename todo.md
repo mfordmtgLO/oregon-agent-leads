@@ -112,4 +112,4 @@
 - [x] Add empty-state and stronger evidence-mapping coverage for the Mortgage Pairings view
 - [x] Visually verify /pairings, save a post-pairing checkpoint, publish, and confirm the live route
 - [x] Add a Mortgage Pairings UI-contract test covering empty state, sourced evidence rendering, and approve/dismiss actions (107 tests passing)
-- [ ] Save and publish a post-pairing checkpoint, then verify the live /pairings route
+- [x] Save and publish a post-pairing checkpoint, then verify the live /pairings route (checkpoint e24fb1c5; live /pairings returned HTTP 200)
