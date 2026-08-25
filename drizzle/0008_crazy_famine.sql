@@ -1,0 +1,1 @@
+ALTER TABLE `agents` ADD `real_estate_license` varchar(64);

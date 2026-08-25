@@ -36,6 +36,8 @@ export const agents = mysqlTable("agents", {
   state: varchar("state", { length: 32 }).default("Oregon").notNull(),
   brokerage: varchar("brokerage", { length: 255 }),
   cityArea: varchar("cityArea", { length: 255 }),
+  /** Oregon Real Estate Agency license number when available for public-record matching. */
+  realEstateLicense: varchar("real_estate_license", { length: 64 }),
   phone: varchar("phone", { length: 64 }),
   email: varchar("email", { length: 320 }),
   websiteBioUrl: text("websiteBioUrl"),
@@ -181,10 +183,24 @@ export const loanOfficerAgentPairings = mysqlTable(
     agentId: int("agent_id").notNull(),
     loanOfficerName: varchar("loan_officer_name", { length: 255 }).notNull(),
     loanOfficerCompany: varchar("loan_officer_company", { length: 255 }),
+    loanOfficerPhone: varchar("loan_officer_phone", { length: 64 }),
+    loanOfficerEmail: varchar("loan_officer_email", { length: 320 }),
+    loanOfficerHeadshotUrl: text("loan_officer_headshot_url"),
     loanOfficerNmlsId: varchar("loan_officer_nmls_id", { length: 64 }),
+    lenderName: varchar("lender_name", { length: 255 }),
     transactionAddress: varchar("transaction_address", { length: 500 }),
     transactionClosedAt: timestamp("transaction_closed_at"),
     transactionType: varchar("transaction_type", { length: 32 }),
+    loanType: varchar("loan_type", { length: 64 }),
+    interestRate: double("interest_rate"),
+    loanAmount: double("loan_amount"),
+    purchasePrice: double("purchase_price"),
+    propertyZillowUrl: text("property_zillow_url"),
+    sharedTransactionCount: int("shared_transaction_count").default(1).notNull(),
+    totalSharedLoanVolume: double("total_shared_loan_volume"),
+    firstSharedClose: timestamp("first_shared_close"),
+    latestSharedClose: timestamp("latest_shared_close"),
+    matchMethod: varchar("match_method", { length: 64 }).default("manual").notNull(),
     sourceUrl: text("source_url").notNull(),
     sourceTitle: varchar("source_title", { length: 500 }),
     evidenceNote: text("evidence_note").notNull(),
@@ -201,3 +217,73 @@ export const loanOfficerAgentPairings = mysqlTable(
 
 export type LoanOfficerAgentPairing = typeof loanOfficerAgentPairings.$inferSelect;
 export type InsertLoanOfficerAgentPairing = typeof loanOfficerAgentPairings.$inferInsert;
+
+/**
+ * Normalized public-record transaction rows. These are raw/research inputs and
+ * are never treated as a verified LO–agent relationship until matched and reviewed.
+ */
+export const propertyTransactions = mysqlTable(
+  "property_transactions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    state: varchar("state", { length: 32 }).default("Oregon").notNull(),
+    countyFips: varchar("county_fips", { length: 5 }),
+    county: varchar("county", { length: 120 }),
+    apn: varchar("apn", { length: 80 }),
+    standardizedAddress: varchar("standardized_address", { length: 500 }),
+    recordingDate: timestamp("recording_date").notNull(),
+    salePrice: double("sale_price"),
+    loanAmount: double("loan_amount"),
+    purchasePrice: double("purchase_price"),
+    interestRate: double("interest_rate"),
+    loanType: varchar("loan_type", { length: 64 }),
+    propertyZillowUrl: text("property_zillow_url"),
+    lenderName: varchar("lender_name", { length: 255 }),
+    buyerName: varchar("buyer_name", { length: 255 }),
+    sellerName: varchar("seller_name", { length: 255 }),
+    buyerAgentLicense: varchar("buyer_agent_license", { length: 64 }),
+    buyerAgentName: varchar("buyer_agent_name", { length: 255 }),
+    loanOfficerNmls: varchar("loan_officer_nmls", { length: 64 }),
+    loanOfficerName: varchar("loan_officer_name", { length: 255 }),
+    sourceType: varchar("source_type", { length: 64 }).notNull(),
+    sourceUrl: text("source_url"),
+    sourceRecordId: varchar("source_record_id", { length: 255 }),
+    rawPayload: text("raw_payload"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  table => ({
+    dateIdx: index("property_transactions_recording_date_idx").on(table.recordingDate),
+    apnIdx: index("property_transactions_apn_idx").on(table.apn),
+    pairIdx: index("property_transactions_pair_idx").on(table.buyerAgentLicense, table.loanOfficerNmls),
+  }),
+);
+
+export type PropertyTransaction = typeof propertyTransactions.$inferSelect;
+export type InsertPropertyTransaction = typeof propertyTransactions.$inferInsert;
+
+/** User-configured public-record pairing discovery schedule. */
+export const pairingDiscoverySchedules = mysqlTable(
+  "pairing_discovery_schedules",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerOpenId: varchar("owner_open_id", { length: 64 }).notNull().unique(),
+    state: varchar("state", { length: 32 }).default("Oregon").notNull(),
+    scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }).unique(),
+    cronExpression: varchar("cron_expression", { length: 64 }).notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    lookbackDays: int("lookback_days").default(365).notNull(),
+    customStartAt: timestamp("custom_start_at"),
+    customEndAt: timestamp("custom_end_at"),
+    lastRunAt: timestamp("last_run_at"),
+    lastRunStartedAt: timestamp("last_run_started_at"),
+    lastRunCompletedAt: timestamp("last_run_completed_at"),
+    lastRunStatus: varchar("last_run_status", { length: 32 }),
+    lastRunPairingsCreated: int("last_run_pairings_created").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ taskUidIdx: index("pairing_discovery_task_uid_idx").on(table.scheduleCronTaskUid) }),
+);
+
+export type PairingDiscoverySchedule = typeof pairingDiscoverySchedules.$inferSelect;
+export type InsertPairingDiscoverySchedule = typeof pairingDiscoverySchedules.$inferInsert;

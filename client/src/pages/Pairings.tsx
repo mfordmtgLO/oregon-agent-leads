@@ -3,80 +3,70 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSelectedState } from "@/contexts/StateContext";
 import { trpc } from "@/lib/trpc";
-import { Check, ExternalLink, Handshake, Loader2, Search, X } from "lucide-react";
+import { Check, ExternalLink, Handshake, Loader2, Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+
+const WINDOWS = [
+  { value: "30", label: "30 days" },
+  { value: "60", label: "60 days" },
+  { value: "90", label: "90 days" },
+  { value: "120", label: "120 days" },
+  { value: "180", label: "6 months" },
+  { value: "365", label: "1 year" },
+  { value: "730", label: "2 years" },
+] as const;
+
+const blankForm = { agentId: "", loanOfficerName: "", loanOfficerNmlsId: "", loanOfficerCompany: "", lenderName: "", loanOfficerPhone: "", loanOfficerEmail: "", loanOfficerHeadshotUrl: "", transactionAddress: "", transactionClosedAt: "", loanType: "", interestRate: "", loanAmount: "", purchasePrice: "", propertyZillowUrl: "", sourceUrl: "", evidenceNote: "" };
+
+function money(value: number | null | undefined) { return value == null ? "Not available" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
+function dateLabel(value: Date | string | null | undefined) { return value ? new Date(value).toLocaleDateString() : "Not available"; }
 
 export default function Pairings() {
   const { state } = useSelectedState();
   const utils = trpc.useUtils();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"pending" | "approved" | "rejected" | "all">("pending");
-  const { data: pairings, isLoading } = trpc.pairings.list.useQuery({
-    state,
-    status: status === "all" ? undefined : status,
-  });
-  const approve = trpc.pairings.approve.useMutation({
-    onSuccess: () => {
-      utils.pairings.list.invalidate();
-      toast.success("Pairing approved");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const reject = trpc.pairings.reject.useMutation({
-    onSuccess: () => {
-      utils.pairings.list.invalidate();
-      toast.success("Pairing dismissed");
-    },
-    onError: error => toast.error(error.message),
-  });
+  const [windowDays, setWindowDays] = useState("365");
+  const [selectedOption, setSelectedOption] = useState("add");
+  const [form, setForm] = useState(blankForm);
+  const [showAdd, setShowAdd] = useState(false);
+  const [scheduleCron, setScheduleCron] = useState("0 0 8 1 * *");
+  const [scheduleEnabled, setScheduleEnabled] = useState(true);
+  const [customStartAt, setCustomStartAt] = useState("");
+  const [customEndAt, setCustomEndAt] = useState("");
+  const { data: pairings, isLoading } = trpc.pairings.list.useQuery({ state, status: status === "all" ? undefined : status });
+  const { data: options } = trpc.pairings.options.useQuery({ state, windowDays: windowDays as "90" | "180" | "365" | "730" });
+  const { data: agents } = trpc.agents.list.useQuery({ state });
+  const approve = trpc.pairings.approve.useMutation({ onSuccess: () => { utils.pairings.list.invalidate(); toast.success("Pairing approved"); }, onError: e => toast.error(e.message) });
+  const reject = trpc.pairings.reject.useMutation({ onSuccess: () => { utils.pairings.list.invalidate(); toast.success("Pairing dismissed"); }, onError: e => toast.error(e.message) });
+  const ingest = trpc.pairings.ingest.useMutation({ onSuccess: () => { utils.pairings.list.invalidate(); utils.pairings.options.invalidate(); setForm(blankForm); setShowAdd(false); setSelectedOption("add"); toast.success("Pair added for review"); }, onError: e => toast.error(e.message) });
+  const { data: scheduleStatus } = trpc.pairings.scheduleStatus.useQuery();
+  const schedule = trpc.pairings.schedule.useMutation({ onSuccess: () => { utils.pairings.scheduleStatus.invalidate(); toast.success("New Pairings automation saved"); }, onError: e => toast.error(e.message) });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (pairings ?? []).filter(pairing => {
-      if (!q) return true;
-      return [pairing.agentName, pairing.agentBrokerage, pairing.loanOfficerName, pairing.loanOfficerCompany, pairing.transactionAddress]
-        .filter(Boolean)
-        .some(value => String(value).toLowerCase().includes(q));
-    });
+    return (pairings ?? []).filter(pairing => !q || [pairing.agentName, pairing.agentBrokerage, pairing.agentPhone, pairing.agentEmail, pairing.agentRealEstateLicense, pairing.loanOfficerName, pairing.loanOfficerCompany, pairing.loanOfficerPhone, pairing.loanOfficerEmail, pairing.loanOfficerNmlsId, pairing.lenderName, pairing.transactionAddress, pairing.loanType, pairing.transactionType, pairing.sourceTitle, pairing.sourceUrl, pairing.evidenceNote].filter(Boolean).some(value => String(value).toLowerCase().includes(q)));
   }, [pairings, query]);
 
-  return (
-    <div className="max-w-[1600px]">
-      <div className="mb-8">
-        <p className="eyebrow text-accent mb-3">Mortgage Relationship Intelligence</p>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="font-display text-5xl md:text-6xl font-extrabold leading-[0.95] tracking-tight">
-              Loan Officer <span className="italic font-medium">×</span>
-              <br />
-              Agent Pairings
-            </h2>
-            <p className="font-serif-text text-lg text-muted-foreground mt-4 max-w-2xl leading-relaxed">
-              Closed-transaction relationships found from the loan-officer side. Every pairing requires a public source that names both the loan officer and the buyer&apos;s agent; nothing is inferred from rankings or brokerage affiliation.
-            </p>
-          </div>
-          <div className="border border-foreground/15 bg-secondary/30 px-4 py-3 max-w-xs">
-            <p className="eyebrow text-muted-foreground">Evidence standard</p>
-            <p className="font-serif-text text-sm mt-1 leading-relaxed">Source URL + named closed transaction + direct agent match.</p>
-          </div>
-        </div>
-        <div className="rule-h mt-6" />
-      </div>
+  function setField(key: keyof typeof blankForm, value: string) { setForm(current => ({ ...current, [key]: value })); }
+  function submitPair() {
+    if (!form.agentId || !form.loanOfficerName || !form.sourceUrl || !form.evidenceNote) { toast.error("Agent, loan officer, source URL, and evidence note are required"); return; }
+    ingest.mutate({ pairings: [{ state, agentId: Number(form.agentId), loanOfficerName: form.loanOfficerName, loanOfficerNmlsId: form.loanOfficerNmlsId || null, loanOfficerCompany: form.loanOfficerCompany || null, loanOfficerPhone: form.loanOfficerPhone || null, loanOfficerEmail: form.loanOfficerEmail || null, loanOfficerHeadshotUrl: form.loanOfficerHeadshotUrl || null, lenderName: form.lenderName || null, transactionAddress: form.transactionAddress || null, transactionClosedAt: form.transactionClosedAt ? new Date(form.transactionClosedAt) : null, loanType: form.loanType || null, interestRate: form.interestRate ? Number(form.interestRate) : null, loanAmount: form.loanAmount ? Number(form.loanAmount) : null, purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : null, propertyZillowUrl: form.propertyZillowUrl || null, evidenceNote: form.evidenceNote, sourceUrl: form.sourceUrl, confidence: "medium", matchMethod: "manual", sharedTransactionCount: 1 }] });
+  }
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-foreground/15 border border-foreground/15 mb-8">
-        <div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{pairings?.length ?? 0}</p><p className="eyebrow text-muted-foreground mt-2">Showing</p></div>
-        <div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{filtered.filter(row => row.status === "pending").length}</p><p className="eyebrow text-muted-foreground mt-2">Needs approval</p></div>
-        <div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{new Set(filtered.map(row => row.loanOfficerName)).size}</p><p className="eyebrow text-muted-foreground mt-2">Loan officers</p></div>
-        <div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{new Set(filtered.map(row => row.agentId)).size}</p><p className="eyebrow text-muted-foreground mt-2">Agents</p></div>
-      </div>
+  return <div className="max-w-[1600px]">
+    <div className="mb-8"><p className="eyebrow text-accent mb-3">Mortgage Relationship Intelligence</p><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="font-display text-5xl md:text-6xl font-extrabold leading-[0.95] tracking-tight">Loan Officer <span className="italic font-medium">×</span><br />Agent Pairings</h2><p className="font-serif-text text-lg text-muted-foreground mt-4 max-w-2xl leading-relaxed">Public-record and user-sourced closed-transaction relationships. Counts below are deduplicated by property/source record inside the selected window.</p></div><div className="border border-foreground/15 bg-secondary/30 px-4 py-3 max-w-xs"><p className="eyebrow text-muted-foreground">Evidence standard</p><p className="font-serif-text text-sm mt-1 leading-relaxed">Named LO + agent + closed transaction + source URL.</p></div></div><div className="rule-h mt-6" /></div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="relative flex-1 min-w-[240px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" /><Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search loan officer, agent, company, or address…" className="rounded-none border-foreground/25 bg-card pl-9 h-10 font-serif-text" /></div>
-        <Select value={status} onValueChange={value => setStatus(value as typeof status)}><SelectTrigger className="rounded-none border-foreground/25 bg-card eyebrow h-10 w-[180px]"><SelectValue /></SelectTrigger><SelectContent className="rounded-none"><SelectItem value="pending" className="rounded-none">Needs approval</SelectItem><SelectItem value="approved" className="rounded-none">Approved</SelectItem><SelectItem value="rejected" className="rounded-none">Dismissed</SelectItem><SelectItem value="all" className="rounded-none">All pairings</SelectItem></SelectContent></Select>
-      </div>
+    <div className="border border-foreground/15 bg-card p-4 mb-6"><div className="flex flex-wrap gap-4 items-end"><div className="min-w-[270px] flex-1"><p className="eyebrow text-muted-foreground mb-2">LO + Agent pairing</p><Select value={selectedOption} onValueChange={value => { setSelectedOption(value); setShowAdd(value === "add"); }}><SelectTrigger className="rounded-none border-foreground/25 h-11 font-serif-text"><SelectValue placeholder="Select a pairing" /></SelectTrigger><SelectContent className="rounded-none"><SelectItem value="add" className="rounded-none"><span className="flex items-center gap-2 font-medium"><Plus className="h-4 w-4" /> Add Pair</span></SelectItem>{(options ?? []).map(option => <SelectItem key={option.id} value={String(option.id)} className="rounded-none"><span className="flex w-full items-center justify-between gap-6"><span>{option.agentName ?? `Agent #${option.agentId}`} <span className="text-muted-foreground">× {option.loanOfficerName}</span></span><span className="font-mono text-xs text-accent">({option.sharedClosingCount})</span></span></SelectItem>)}</SelectContent></Select></div><div><p className="eyebrow text-muted-foreground mb-2">Closing timeline</p><div className="flex flex-wrap gap-1">{WINDOWS.map(item => <Button key={item.value} type="button" variant={windowDays === item.value ? "default" : "outline"} size="sm" onClick={() => setWindowDays(item.value)} className="rounded-none eyebrow h-9">{item.label}</Button>)}</div></div></div><p className="font-serif-text text-xs text-muted-foreground mt-3">Pairing options sort by loan officer last name. The number in parentheses is the shared closing count for the selected timeframe; 0 means no matching imported public-record rows are currently available.</p></div>
 
-      {isLoading ? <div className="py-24 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-accent" /><p className="eyebrow text-muted-foreground mt-4">Loading pairings</p></div> : filtered.length === 0 ? <div className="border border-foreground/15 bg-card py-20 text-center px-6"><Handshake className="h-8 w-8 mx-auto text-muted-foreground/40" strokeWidth={1.25} /><h3 className="font-display text-3xl font-bold mt-5">No evidenced pairings yet</h3><p className="font-serif-text text-muted-foreground mt-3 max-w-xl mx-auto leading-relaxed">This view stays empty until a public loan-officer-side resource names the loan officer, the closed transaction, and one of the agents in your Oregon roster. Use the protected ingest procedure to add a sourced finding for review.</p></div> : <div className="border border-foreground/15 divide-y divide-foreground/10 bg-card">{filtered.map(pairing => <div key={pairing.id} className="px-5 py-5 flex flex-col lg:flex-row lg:items-start gap-5"><div className="lg:w-60 shrink-0"><p className="eyebrow text-accent flex items-center gap-1.5"><Handshake className="h-3 w-3" /> {pairing.status === "pending" ? "Needs approval" : pairing.status}</p><p className="font-display text-xl font-bold mt-1.5">{pairing.loanOfficerName}</p><p className="font-serif-text text-sm text-muted-foreground mt-1">{pairing.loanOfficerCompany ?? "Company not recorded"}</p></div><div className="flex-1 min-w-0"><p className="font-serif-text text-base"><span className="font-medium">{pairing.agentName ?? `Agent #${pairing.agentId}`}</span><span className="text-muted-foreground"> · {pairing.agentBrokerage ?? "Brokerage not recorded"}</span></p>{pairing.transactionAddress && <p className="font-serif-text text-sm text-muted-foreground mt-1">Closed transaction: {pairing.transactionAddress}{pairing.transactionClosedAt ? ` · ${new Date(pairing.transactionClosedAt).toLocaleDateString()}` : ""}</p>}<p className="font-serif-text text-sm text-muted-foreground mt-2 leading-relaxed">{pairing.evidenceNote}</p><a href={pairing.sourceUrl} target="_blank" rel="noreferrer" className="eyebrow text-accent hover:underline inline-flex items-center gap-1 mt-2"><ExternalLink className="h-3 w-3" /> View source</a></div>{pairing.status === "pending" && <div className="flex lg:flex-col gap-2 shrink-0"><Button size="sm" onClick={() => approve.mutate({ id: pairing.id })} className="rounded-none eyebrow bg-foreground text-background hover:bg-foreground/90"><Check className="h-3.5 w-3.5 mr-1.5" /> Approve</Button><Button size="sm" variant="outline" onClick={() => reject.mutate({ id: pairing.id })} className="rounded-none eyebrow border-foreground/25"><X className="h-3.5 w-3.5 mr-1.5" /> Dismiss</Button></div>}</div>)}</div>}
-    </div>
-  );
+    <div className="border border-foreground/15 bg-card p-4 mb-6"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow text-accent">New Pairings automation</p><p className="font-serif-text text-sm text-muted-foreground mt-1">Background runs use the same selected lookback and never auto-approve a relationship.</p></div><label className="flex items-center gap-2 eyebrow"><input type="checkbox" checked={scheduleEnabled} onChange={event => setScheduleEnabled(event.target.checked)} /> Enabled</label></div><div className="flex flex-wrap gap-2 mt-4">{WINDOWS.map(item => <Button key={item.value} type="button" variant={windowDays === item.value ? "default" : "outline"} size="sm" onClick={() => { setWindowDays(item.value); }} className="rounded-none eyebrow h-9">{item.label}</Button>)}</div><div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4"><Input value={scheduleCron} onChange={event => setScheduleCron(event.target.value)} placeholder="UTC cron: 0 0 8 1 * *" className="rounded-none" /><Input type="date" value={customStartAt} onChange={event => setCustomStartAt(event.target.value)} className="rounded-none" /><Input type="date" value={customEndAt} onChange={event => setCustomEndAt(event.target.value)} className="rounded-none" /><Button disabled={schedule.isPending} onClick={() => schedule.mutate({ cron: scheduleCron, enabled: scheduleEnabled, lookbackDays: Number(windowDays), customStartAt: customStartAt ? new Date(customStartAt) : null, customEndAt: customEndAt ? new Date(customEndAt) : null })} className="rounded-none eyebrow">{schedule.isPending ? "Saving…" : "Save automation"}</Button></div><p className="font-serif-text text-xs text-muted-foreground mt-3">{scheduleStatus?.enabled ? `Active · ${scheduleStatus.cronExpression} · last run ${scheduleStatus.lastRunAt ? dateLabel(scheduleStatus.lastRunAt) : "not yet"}` : "Not scheduled yet"}</p></div>
+
+    {showAdd && <div className="border border-accent/30 bg-accent/5 p-5 mb-8"><div className="flex items-center justify-between mb-4"><div><p className="eyebrow text-accent">New sourced relationship</p><h3 className="font-display text-2xl font-bold mt-1">Add Pair</h3></div><Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setSelectedOption("add"); }} className="rounded-none"><X className="h-4 w-4" /></Button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-3">{(["agentId","loanOfficerName","loanOfficerNmlsId","loanOfficerCompany","lenderName","loanOfficerPhone","loanOfficerEmail","loanOfficerHeadshotUrl","transactionAddress","transactionClosedAt","loanType","interestRate","loanAmount","purchasePrice","propertyZillowUrl","sourceUrl"] as const).map(key => key === "agentId" ? <Select key={key} value={form.agentId} onValueChange={value => setField(key, value)}><SelectTrigger className="rounded-none bg-card"><SelectValue placeholder="Select roster agent *" /></SelectTrigger><SelectContent className="rounded-none">{(agents ?? []).filter(agent => !agent.isCustom || agent.state === state).map(agent => <SelectItem key={agent.id} value={String(agent.id)} className="rounded-none">{agent.fullName} · {agent.brokerage ?? "Brokerage unavailable"}</SelectItem>)}</SelectContent></Select> : <Input key={key} type={key === "transactionClosedAt" ? "date" : key === "interestRate" || key === "loanAmount" || key === "purchasePrice" ? "number" : "text"} step={key === "interestRate" ? "0.001" : undefined} placeholder={`${key.replace(/[A-Z]/g, letter => ` ${letter.toLowerCase()}`)}${["loanOfficerName","sourceUrl"].includes(key) ? " *" : ""}`} value={form[key]} onChange={event => setField(key, event.target.value)} className="rounded-none bg-card" />)}</div><Input placeholder="Evidence note * — explain exactly how the public record names both parties" value={form.evidenceNote} onChange={event => setField("evidenceNote", event.target.value)} className="rounded-none bg-card mt-3" /><div className="flex justify-end mt-4"><Button onClick={submitPair} disabled={ingest.isPending} className="rounded-none eyebrow">{ingest.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Save for review</Button></div></div>}
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-foreground/15 border border-foreground/15 mb-8"><div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{pairings?.length ?? 0}</p><p className="eyebrow text-muted-foreground mt-2">Showing</p></div><div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{filtered.filter(row => row.status === "pending").length}</p><p className="eyebrow text-muted-foreground mt-2">Needs approval</p></div><div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{new Set(filtered.map(row => row.loanOfficerName)).size}</p><p className="eyebrow text-muted-foreground mt-2">Loan officers</p></div><div className="bg-card px-5 py-4"><p className="font-display text-3xl font-bold">{new Set(filtered.map(row => row.agentId)).size}</p><p className="eyebrow text-muted-foreground mt-2">Agents</p></div></div>
+    <div className="flex flex-wrap items-center gap-3 mb-6"><div className="relative flex-1 min-w-[240px]"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" /><Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search LO, agent, NMLS, license, lender, brokerage, contact, address, loan type, source…" className="rounded-none border-foreground/25 bg-card pl-9 h-10 font-serif-text" /></div><Select value={status} onValueChange={value => setStatus(value as typeof status)}><SelectTrigger className="rounded-none border-foreground/25 bg-card eyebrow h-10 w-[180px]"><SelectValue /></SelectTrigger><SelectContent className="rounded-none"><SelectItem value="pending" className="rounded-none">Needs approval</SelectItem><SelectItem value="approved" className="rounded-none">Approved</SelectItem><SelectItem value="rejected" className="rounded-none">Dismissed</SelectItem><SelectItem value="all" className="rounded-none">All pairings</SelectItem></SelectContent></Select></div>
+
+    {isLoading ? <div className="py-24 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-accent" /><p className="eyebrow text-muted-foreground mt-4">Loading pairings</p></div> : filtered.length === 0 ? <div className="border border-foreground/15 bg-card py-20 text-center px-6"><Handshake className="h-8 w-8 mx-auto text-muted-foreground/40" strokeWidth={1.25} /><h3 className="font-display text-3xl font-bold mt-5">No evidenced pairings yet</h3><p className="font-serif-text text-muted-foreground mt-3 max-w-xl mx-auto leading-relaxed">Every pairing requires a public source that names both parties and the closed transaction. Use the protected ingest procedure or Add Pair to save a public-record finding for review. Leave values blank when the source does not disclose them; the dashboard will never infer loan terms or property value.</p></div> : <div className="border border-foreground/15 divide-y divide-foreground/10 bg-card">{filtered.map(pairing => <div key={pairing.id} className="px-5 py-5 flex flex-col gap-5"><div className="flex flex-col lg:flex-row lg:items-start gap-5"><div className="lg:w-60 shrink-0"><p className="eyebrow text-accent flex items-center gap-1.5"><Handshake className="h-3 w-3" /> {pairing.status === "pending" ? "Needs approval" : pairing.status}</p><p className="font-display text-xl font-bold mt-1.5">{pairing.loanOfficerName}</p><p className="font-serif-text text-sm text-muted-foreground mt-1">{pairing.loanOfficerCompany ?? "Company not recorded"} · NMLS {pairing.loanOfficerNmlsId ?? "Not available"}</p>{pairing.loanOfficerEmail && <a href={`mailto:${pairing.loanOfficerEmail}`} className="font-serif-text text-xs text-accent hover:underline">{pairing.loanOfficerEmail}</a>}</div><div className="flex-1 min-w-0"><p className="font-serif-text text-base"><span className="font-medium">{pairing.agentName ?? `Agent #${pairing.agentId}`}</span><span className="text-muted-foreground"> · {pairing.agentBrokerage ?? "Brokerage not recorded"}</span></p><div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm"><div><p className="eyebrow text-muted-foreground">Property</p>{pairing.propertyZillowUrl ? <a href={pairing.propertyZillowUrl} target="_blank" rel="noreferrer" className="font-serif-text text-accent hover:underline inline-flex items-center gap-1">View Zillow <ExternalLink className="h-3 w-3" /></a> : <p className="font-serif-text">{pairing.transactionAddress ?? "Not available"}</p>}</div><div><p className="eyebrow text-muted-foreground">Closed</p><p className="font-serif-text">{dateLabel(pairing.transactionClosedAt)}</p></div><div><p className="eyebrow text-muted-foreground">Loan / purchase</p><p className="font-serif-text">{money(pairing.loanAmount)} / {money(pairing.purchasePrice)}</p></div><div><p className="eyebrow text-muted-foreground">Type / rate</p><p className="font-serif-text">{pairing.loanType ?? "Not available"} / {pairing.interestRate == null ? "Not available" : `${pairing.interestRate}%`}</p></div></div><p className="font-serif-text text-sm text-muted-foreground mt-3 leading-relaxed">{pairing.evidenceNote}</p><a href={pairing.sourceUrl} target="_blank" rel="noreferrer" className="eyebrow text-accent hover:underline inline-flex items-center gap-1 mt-2"><ExternalLink className="h-3 w-3" /> View source</a></div>{pairing.status === "pending" && <div className="flex lg:flex-col gap-2 shrink-0"><Button size="sm" onClick={() => approve.mutate({ id: pairing.id })} className="rounded-none eyebrow bg-foreground text-background"><Check className="h-3.5 w-3.5 mr-1.5" /> Approve</Button><Button size="sm" variant="outline" onClick={() => reject.mutate({ id: pairing.id })} className="rounded-none eyebrow border-foreground/25"><X className="h-3.5 w-3.5 mr-1.5" /> Dismiss</Button></div>}</div></div>)}</div>}
+  </div>;
 }

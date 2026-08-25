@@ -13,6 +13,9 @@ import {
   InsertVerificationSchedule,
   loanOfficerAgentPairings,
   InsertLoanOfficerAgentPairing,
+  propertyTransactions,
+  pairingDiscoverySchedules,
+  InsertPairingDiscoverySchedule,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -296,18 +299,74 @@ export async function updateVerificationSchedule(
 // ---------------------------------------------------------------------------
 // Publicly evidenced loan-officer / agent pairings
 // ---------------------------------------------------------------------------
+function normalizeMatchText(value: string | null | undefined) {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export async function listLoanOfficerAgentPairings(state = "Oregon", status?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const rows = await db
-    .select({ pairing: loanOfficerAgentPairings, agentName: agents.fullName, agentBrokerage: agents.brokerage })
+    .select({
+      pairing: loanOfficerAgentPairings,
+      agentName: agents.fullName,
+      agentBrokerage: agents.brokerage,
+      agentPhone: agents.phone,
+      agentEmail: agents.email,
+      agentHeadshotUrl: agents.headshotUrl,
+      agentCityArea: agents.cityArea,
+      agentWebsiteBioUrl: agents.websiteBioUrl,
+      agentZillowUrl: agents.zillowUrl,
+      agentRealEstateLicense: agents.realEstateLicense,
+    })
     .from(loanOfficerAgentPairings)
     .leftJoin(agents, eq(loanOfficerAgentPairings.agentId, agents.id))
     .where(eq(loanOfficerAgentPairings.state, state))
     .orderBy(desc(loanOfficerAgentPairings.createdAt));
   return rows
     .filter(row => !status || row.pairing.status === status)
-    .map(row => ({ ...row.pairing, agentName: row.agentName, agentBrokerage: row.agentBrokerage }));
+    .map(row => ({
+      ...row.pairing,
+      agentName: row.agentName,
+      agentBrokerage: row.agentBrokerage,
+      agentPhone: row.agentPhone,
+      agentEmail: row.agentEmail,
+      agentHeadshotUrl: row.agentHeadshotUrl,
+      agentCityArea: row.agentCityArea,
+      agentWebsiteBioUrl: row.agentWebsiteBioUrl,
+      agentZillowUrl: row.agentZillowUrl,
+      agentRealEstateLicense: row.agentRealEstateLicense,
+    }));
+}
+
+export async function listLoanOfficerAgentPairingOptions(state = "Oregon", windowDays = 365) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [pairingRows, transactions] = await Promise.all([
+    db.select({ pairing: loanOfficerAgentPairings, agentName: agents.fullName, agentBrokerage: agents.brokerage, agentRealEstateLicense: agents.realEstateLicense })
+      .from(loanOfficerAgentPairings)
+      .leftJoin(agents, eq(loanOfficerAgentPairings.agentId, agents.id))
+      .where(eq(loanOfficerAgentPairings.state, state))
+      .orderBy(desc(loanOfficerAgentPairings.loanOfficerName)),
+    db.select().from(propertyTransactions).where(eq(propertyTransactions.state, state)),
+  ]);
+  const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+  return pairingRows.map(row => {
+    const agentNameKey = normalizeMatchText(row.agentName);
+    const licenseKey = normalizeMatchText(row.agentRealEstateLicense);
+    const loNmlsKey = normalizeMatchText(row.pairing.loanOfficerNmlsId);
+    const seen = new Set<string>();
+    for (const transaction of transactions) {
+      if (new Date(transaction.recordingDate).getTime() < cutoff) continue;
+      if (loNmlsKey && normalizeMatchText(transaction.loanOfficerNmls) !== loNmlsKey) continue;
+      const agentMatches = licenseKey && normalizeMatchText(transaction.buyerAgentLicense) === licenseKey;
+      const nameMatches = agentNameKey && normalizeMatchText(transaction.buyerAgentName) === agentNameKey;
+      if (!agentMatches && !nameMatches) continue;
+      const key = transaction.sourceRecordId || transaction.apn || `${transaction.standardizedAddress ?? transaction.id}|${new Date(transaction.recordingDate).toISOString().slice(0, 10)}`;
+      seen.add(key);
+    }
+    return { ...row.pairing, agentName: row.agentName, agentBrokerage: row.agentBrokerage, sharedClosingCount: seen.size };
+  });
 }
 
 export async function insertLoanOfficerAgentPairings(rows: InsertLoanOfficerAgentPairing[]) {
@@ -334,4 +393,39 @@ export async function deleteLoanOfficerAgentPairing(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(loanOfficerAgentPairings).where(eq(loanOfficerAgentPairings.id, id));
+}
+
+export async function updateLoanOfficerAgentPairing(id: number, fields: Partial<InsertLoanOfficerAgentPairing>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(loanOfficerAgentPairings).set(fields).where(eq(loanOfficerAgentPairings.id, id));
+}
+
+export async function getPairingDiscoveryScheduleByOwner(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(pairingDiscoverySchedules).where(eq(pairingDiscoverySchedules.ownerOpenId, ownerOpenId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPairingDiscoveryScheduleByTaskUid(taskUid: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(pairingDiscoverySchedules).where(eq(pairingDiscoverySchedules.scheduleCronTaskUid, taskUid)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function insertPairingDiscoverySchedule(row: InsertPairingDiscoverySchedule) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(pairingDiscoverySchedules).values(row);
+  return getPairingDiscoveryScheduleByOwner(row.ownerOpenId);
+}
+
+export async function updatePairingDiscoverySchedule(id: number, fields: Partial<InsertPairingDiscoverySchedule>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(pairingDiscoverySchedules).set(fields).where(eq(pairingDiscoverySchedules.id, id));
+  const rows = await db.select().from(pairingDiscoverySchedules).where(eq(pairingDiscoverySchedules.id, id)).limit(1);
+  return rows[0] ?? null;
 }

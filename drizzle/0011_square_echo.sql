@@ -1,0 +1,1 @@
+ALTER TABLE `loan_officer_agent_pairings` ADD `lender_name` varchar(255);

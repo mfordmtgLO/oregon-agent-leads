@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { parse as parseCookieHeader } from "cookie";
-import { listHeartbeatJobs } from "./_core/heartbeat";
+import { createHeartbeatJob, listHeartbeatJobs, updateHeartbeatJob } from "./_core/heartbeat";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -22,6 +22,7 @@ import {
   researchFindingSchema,
   verificationProcedures,
 } from "./verificationRouter";
+import { pairingDiscoverySchedules } from "../drizzle/schema";
 
 const stateSchema = z.enum(US_STATES);
 const pairingSchema = z.object({
@@ -29,10 +30,24 @@ const pairingSchema = z.object({
   agentId: z.number().int().positive(),
   loanOfficerName: z.string().min(2).max(255),
   loanOfficerCompany: z.string().max(255).optional().nullable(),
+  loanOfficerPhone: z.string().max(64).optional().nullable(),
+  loanOfficerEmail: z.string().email().max(320).optional().nullable(),
+  loanOfficerHeadshotUrl: z.string().url().max(2000).optional().nullable(),
   loanOfficerNmlsId: z.string().max(64).optional().nullable(),
+  lenderName: z.string().max(255).optional().nullable(),
   transactionAddress: z.string().max(500).optional().nullable(),
   transactionClosedAt: z.coerce.date().optional().nullable(),
   transactionType: z.string().max(32).optional().nullable(),
+  loanType: z.string().max(64).optional().nullable(),
+  interestRate: z.number().nonnegative().optional().nullable(),
+  loanAmount: z.number().nonnegative().optional().nullable(),
+  purchasePrice: z.number().nonnegative().optional().nullable(),
+  propertyZillowUrl: z.string().url().max(2000).optional().nullable(),
+  sharedTransactionCount: z.number().int().min(1).default(1),
+  totalSharedLoanVolume: z.number().nonnegative().optional().nullable(),
+  firstSharedClose: z.coerce.date().optional().nullable(),
+  latestSharedClose: z.coerce.date().optional().nullable(),
+  matchMethod: z.string().max(64).default("manual"),
   sourceUrl: z.string().url().max(2000),
   sourceTitle: z.string().max(500).optional().nullable(),
   evidenceNote: z.string().min(10).max(5000),
@@ -251,9 +266,38 @@ export const appRouter = router({
     list: sessionProcedure
       .input(z.object({ state: stateSchema.optional(), status: z.enum(["pending", "approved", "rejected"]).optional() }).optional())
       .query(({ input }) => db.listLoanOfficerAgentPairings(input?.state ?? DEFAULT_STATE, input?.status)),
+    options: sessionProcedure
+      .input(z.object({ state: stateSchema.optional(), windowDays: z.enum(["30", "60", "90", "120", "180", "365", "730"]).default("365") }).optional())
+      .query(({ input }) => db.listLoanOfficerAgentPairingOptions(input?.state ?? DEFAULT_STATE, Number(input?.windowDays ?? "365"))),
     ingest: sessionProcedure
       .input(z.object({ pairings: z.array(pairingSchema).min(1).max(200) }))
       .mutation(({ input }) => db.insertLoanOfficerAgentPairings(input.pairings as never).then(() => ({ inserted: input.pairings.length }))),
+    schedule: sessionProcedure
+      .input(z.object({ cron: z.string().regex(/^\\d+ \\d+ \\d+ \\* \\* \\*$/), enabled: z.boolean().default(true), lookbackDays: z.number().int().min(30).max(730).default(365), customStartAt: z.coerce.date().nullable().optional(), customEndAt: z.coerce.date().nullable().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const ownerOpenId = "mike.ford";
+        const existing = await db.getPairingDiscoveryScheduleByOwner(ownerOpenId);
+        const fields = { state: DEFAULT_STATE, cronExpression: input.cron, enabled: input.enabled, lookbackDays: input.lookbackDays, customStartAt: input.customStartAt ?? null, customEndAt: input.customEndAt ?? null };
+        const sessionToken = getAppSessionCookie(ctx.req) ?? "";
+        let schedule = existing;
+        if (!existing) {
+          const job = await createHeartbeatJob({ name: "new-pairings-oregon", cron: input.cron, path: "/api/scheduled/newPairings", description: "User-configured public-record LO+Agent pairing discovery" }, sessionToken);
+          schedule = await db.insertPairingDiscoverySchedule({ ownerOpenId, ...fields, scheduleCronTaskUid: job.taskUid });
+        } else {
+          if (existing.scheduleCronTaskUid) await updateHeartbeatJob(existing.scheduleCronTaskUid, { cron: input.cron, enable: input.enabled }, sessionToken);
+          schedule = await db.updatePairingDiscoverySchedule(existing.id, fields);
+        }
+        return schedule;
+      }),
+    scheduleStatus: sessionProcedure.query(() => db.getPairingDiscoveryScheduleByOwner("mike.ford")),
+    update: sessionProcedure
+      .input(pairingSchema.partial().extend({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const { id, ...fields } = input;
+        const clean = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+        await db.updateLoanOfficerAgentPairing(id, clean as never);
+        return { success: true };
+      }),
     approve: sessionProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(({ input }) => db.setLoanOfficerAgentPairingStatus(input.id, "approved").then(() => ({ success: true }))),

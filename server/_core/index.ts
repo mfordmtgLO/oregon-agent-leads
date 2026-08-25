@@ -12,6 +12,7 @@ import { ENV } from "./env";
 import { isAuthorizedSyncRequest, toOregonAgentSyncExport } from "../syncExport";
 import * as db from "../db";
 import { handleMonthlyVerification } from "../scheduledVerification";
+import { handleNewPairings } from "../scheduledPairings";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +42,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.post("/api/scheduled/monthlyVerification", handleMonthlyVerification);
+  app.post("/api/scheduled/newPairings", handleNewPairings);
   app.get("/api/sync/agents", async (req, res) => {
     if (!isAuthorizedSyncRequest(req.header("authorization"), ENV.agentSyncToken)) {
       return res.status(401).json({ error: "Unauthorized" });
