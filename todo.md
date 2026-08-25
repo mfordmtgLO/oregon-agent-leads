@@ -90,6 +90,6 @@
 - [x] Fixed missed match for closed-up brand spellings (RE/MAX Power Pros vs REMAX PowerPros)
 - [x] Clear test-run findings from the queue so Mike sees only real results
 - [x] Verify Review Queue behaviour — sweep exercised live via curl on the dev server (10 agents: 4 confirmed, 6 unverified) and covered by UI-contract tests for queue fields, approve, dismiss, acknowledge, territory scoping, and the sweep itself; preview host is captcha-walled so in-browser clicking is pending live verification
-- [ ] Checkpoint + publish, then verify on the live URL
-- [ ] Research pass on 60 agents to populate the first queue with real findings
-- [ ] Ingest findings, verify populated queue, deliver
+- [x] Checkpoint + publish, then verify on the live URL (live login, protected routes, and ingest endpoint verified)
+- [x] Research pass on 60 agents using low-credit sequential checks of existing profile URLs; 46 sources supported the roster record, while 14 were blocked, stale, or inconclusive and were conservatively left unverified
+- [x] Ingest 60 findings into production run 420001; verified 60 checked agents, 0 unmatched, 46 confirmed, 14 conservatively unverified, and complete run history

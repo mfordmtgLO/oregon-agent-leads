@@ -1,0 +1,10 @@
+const base = process.env.OREGON_LEADS_BASE ?? "https://oregonleads-bqkuz5cc.manus.space";
+const login = await fetch(`${base}/api/trpc/appAuth.login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ json: { username: "mike.ford", password: "OregonMLO2025!" } }) });
+const cookie = login.headers.get("set-cookie")?.split(";")[0];
+const queue = await fetch(`${base}/api/trpc/verification.queue?input=${encodeURIComponent(JSON.stringify({ json: { state: "Oregon" } }))}`, { headers: { cookie } });
+const runs = await fetch(`${base}/api/trpc/verification.runs?input=${encodeURIComponent(JSON.stringify({ json: { state: "Oregon" } }))}`, { headers: { cookie } });
+const q = await queue.json();
+const r = await runs.json();
+const findings = q.result?.data?.json ?? [];
+const history = r.result?.data?.json ?? [];
+console.log(JSON.stringify({ queueHttp: queue.status, pendingCount: findings.length, outcomes: Object.fromEntries(Object.entries(Object.groupBy(findings, x => x.outcome)).map(([k,v]) => [k,v.length])), runHttp: runs.status, latestRun: history[0] ?? null }, null, 2));
