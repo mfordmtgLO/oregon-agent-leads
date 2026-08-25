@@ -97,6 +97,6 @@
 - [x] Add a low-credit sequential scheduled sweep covering all 60 agents plus paired principal/managing principal broker source pages
 - [x] Send an owner approval reminder after each monthly run with counts and review-queue link
 - [x] Add scheduled callback authentication, idempotency, and Vitest coverage (101 tests passing)
-- [ ] Create and verify the monthly production schedule, then checkpoint and publish
+- [x] Create and verify the monthly production schedule, then checkpoint and publish (enabled task 4ENAXZJ3ExAoPXoZg5sCk7; 0 0 8 1 * * UTC; callback verified in production configuration)
 - [x] Add an explicit scheduled verification path for paired principal/managing principal broker or office source pages, not only agent pages
 - [x] Add a Vitest regression for duplicate monthly callback suppression within the idempotency window
