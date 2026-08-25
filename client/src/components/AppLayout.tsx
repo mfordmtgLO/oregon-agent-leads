@@ -9,7 +9,7 @@ import {
 import { useSelectedState } from "@/contexts/StateContext";
 import { useAppSession } from "@/hooks/useAppSession";
 import Login from "@/pages/Login";
-import { Building2, LayoutGrid, Loader2, LogOut, MapPin, RefreshCw, UserPlus } from "lucide-react";
+import { Building2, Handshake, LayoutGrid, Loader2, LogOut, MapPin, RefreshCw, UserPlus } from "lucide-react";
 import { US_STATES, type USState } from "@shared/states";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -20,6 +20,7 @@ const navItems = [
   { label: "Agent Index", path: "/", icon: LayoutGrid },
   { label: "Office Rankings", path: "/offices", icon: Building2 },
   { label: "Update Agents", path: "/review", icon: RefreshCw },
+  { label: "Mortgage Pairings", path: "/pairings", icon: Handshake },
   { label: "Add Agent", path: "/add", icon: UserPlus },
 ];
 

@@ -24,6 +24,20 @@ import {
 } from "./verificationRouter";
 
 const stateSchema = z.enum(US_STATES);
+const pairingSchema = z.object({
+  state: stateSchema.default(DEFAULT_STATE),
+  agentId: z.number().int().positive(),
+  loanOfficerName: z.string().min(2).max(255),
+  loanOfficerCompany: z.string().max(255).optional().nullable(),
+  loanOfficerNmlsId: z.string().max(64).optional().nullable(),
+  transactionAddress: z.string().max(500).optional().nullable(),
+  transactionClosedAt: z.coerce.date().optional().nullable(),
+  transactionType: z.string().max(32).optional().nullable(),
+  sourceUrl: z.string().url().max(2000),
+  sourceTitle: z.string().max(500).optional().nullable(),
+  evidenceNote: z.string().min(10).max(5000),
+  confidence: z.enum(["low", "medium", "high"]).default("medium"),
+});
 
 function getAppSessionCookie(req: { headers: { cookie?: string } }): string | undefined {
   const raw = req.headers.cookie;
@@ -230,6 +244,22 @@ export const appRouter = router({
         const { url } = await storagePut(key, buffer, input.mimeType);
         return { url } as const;
       }),
+  }),
+
+  /** "Update Current Top Agents" verification queue. */
+  pairings: router({
+    list: sessionProcedure
+      .input(z.object({ state: stateSchema.optional(), status: z.enum(["pending", "approved", "rejected"]).optional() }).optional())
+      .query(({ input }) => db.listLoanOfficerAgentPairings(input?.state ?? DEFAULT_STATE, input?.status)),
+    ingest: sessionProcedure
+      .input(z.object({ pairings: z.array(pairingSchema).min(1).max(200) }))
+      .mutation(({ input }) => db.insertLoanOfficerAgentPairings(input.pairings as never).then(() => ({ inserted: input.pairings.length }))),
+    approve: sessionProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(({ input }) => db.setLoanOfficerAgentPairingStatus(input.id, "approved").then(() => ({ success: true }))),
+    reject: sessionProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(({ input }) => db.setLoanOfficerAgentPairingStatus(input.id, "rejected").then(() => ({ success: true }))),
   }),
 
   /** "Update Current Top Agents" verification queue. */

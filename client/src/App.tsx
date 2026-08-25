@@ -10,6 +10,7 @@ import AddAgent from "./pages/AddAgent";
 import Dashboard from "./pages/Dashboard";
 import OfficeRankings from "./pages/OfficeRankings";
 import ReviewQueue from "./pages/ReviewQueue";
+import Pairings from "./pages/Pairings";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
         <Route path={"/"} component={Dashboard} />
         <Route path={"/offices"} component={OfficeRankings} />
         <Route path={"/review"} component={ReviewQueue} />
+        <Route path={"/pairings"} component={Pairings} />
         <Route path={"/add"} component={AddAgent} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}

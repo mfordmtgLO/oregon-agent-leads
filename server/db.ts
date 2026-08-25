@@ -11,6 +11,8 @@ import {
   verificationRuns,
   verificationSchedules,
   InsertVerificationSchedule,
+  loanOfficerAgentPairings,
+  InsertLoanOfficerAgentPairing,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -289,4 +291,47 @@ export async function updateVerificationSchedule(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(verificationSchedules).set(fields).where(eq(verificationSchedules.id, id));
+}
+
+// ---------------------------------------------------------------------------
+// Publicly evidenced loan-officer / agent pairings
+// ---------------------------------------------------------------------------
+export async function listLoanOfficerAgentPairings(state = "Oregon", status?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({ pairing: loanOfficerAgentPairings, agentName: agents.fullName, agentBrokerage: agents.brokerage })
+    .from(loanOfficerAgentPairings)
+    .leftJoin(agents, eq(loanOfficerAgentPairings.agentId, agents.id))
+    .where(eq(loanOfficerAgentPairings.state, state))
+    .orderBy(desc(loanOfficerAgentPairings.createdAt));
+  return rows
+    .filter(row => !status || row.pairing.status === status)
+    .map(row => ({ ...row.pairing, agentName: row.agentName, agentBrokerage: row.agentBrokerage }));
+}
+
+export async function insertLoanOfficerAgentPairings(rows: InsertLoanOfficerAgentPairing[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (rows.length === 0) return;
+  await db.insert(loanOfficerAgentPairings).values(rows);
+}
+
+export async function getLoanOfficerAgentPairing(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(loanOfficerAgentPairings).where(eq(loanOfficerAgentPairings.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function setLoanOfficerAgentPairingStatus(id: number, status: "pending" | "approved" | "rejected") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(loanOfficerAgentPairings).set({ status, reviewedAt: new Date() }).where(eq(loanOfficerAgentPairings.id, id));
+}
+
+export async function deleteLoanOfficerAgentPairing(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(loanOfficerAgentPairings).where(eq(loanOfficerAgentPairings.id, id));
 }

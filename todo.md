@@ -104,3 +104,12 @@
 - [x] Add targeted source links for the 14 inconclusive paired principal/managing principal broker records and preserve conservative verification outcomes (record-specific URLs persisted in officeDataSources; no unsupported broker changes applied)
 - [x] Validate and, where needed, add record-specific targeted office/principal-broker source URLs for each of the 14 inconclusive Oregon records
 - [x] Add a data-contract regression proving every intended inconclusive record resolves a broker/office source link (102 tests passing)
+- [x] Define conservative LO–agent closed-transaction pairing fields, evidence rules, and review status
+- [x] Research public loan-officer-side resources for directly evidenced Oregon LO–agent pairings without broad search; inspected specific Mid Oregon Lending, Hood River Mortgage, and Stepping Stone Mortgage resources and found no defensible roster pairings, so no records were fabricated or seeded
+- [x] Add pairing storage, protected ingest/review procedures, and Mortgage Pairings dashboard presentation without inferring relationships; route visually verified
+- [x] Add tests, validate evidence mapping, and checkpoint/publish the pairing workflow (105 tests passing before final checkpoint)
+- [x] Inspect and document specific loan-officer-side public pages, or confirm none are usable, for targeted Oregon LO–agent pairing research
+- [x] Add empty-state and stronger evidence-mapping coverage for the Mortgage Pairings view
+- [x] Visually verify /pairings, save a post-pairing checkpoint, publish, and confirm the live route
+- [x] Add a Mortgage Pairings UI-contract test covering empty state, sourced evidence rendering, and approve/dismiss actions (107 tests passing)
+- [ ] Save and publish a post-pairing checkpoint, then verify the live /pairings route

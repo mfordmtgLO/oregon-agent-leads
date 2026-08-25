@@ -167,3 +167,37 @@ export const verificationSchedules = mysqlTable(
 
 export type VerificationSchedule = typeof verificationSchedules.$inferSelect;
 export type InsertVerificationSchedule = typeof verificationSchedules.$inferInsert;
+
+/**
+ * Publicly evidenced mortgage-loan-officer / agent closed-transaction pairings.
+ * These rows are research leads only until Mike approves them; no relationship is
+ * inferred from brokerage, lender brand, rankings, or transaction volume.
+ */
+export const loanOfficerAgentPairings = mysqlTable(
+  "loan_officer_agent_pairings",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    state: varchar("state", { length: 32 }).default("Oregon").notNull(),
+    agentId: int("agent_id").notNull(),
+    loanOfficerName: varchar("loan_officer_name", { length: 255 }).notNull(),
+    loanOfficerCompany: varchar("loan_officer_company", { length: 255 }),
+    loanOfficerNmlsId: varchar("loan_officer_nmls_id", { length: 64 }),
+    transactionAddress: varchar("transaction_address", { length: 500 }),
+    transactionClosedAt: timestamp("transaction_closed_at"),
+    transactionType: varchar("transaction_type", { length: 32 }),
+    sourceUrl: text("source_url").notNull(),
+    sourceTitle: varchar("source_title", { length: 500 }),
+    evidenceNote: text("evidence_note").notNull(),
+    confidence: varchar("confidence", { length: 32 }).default("medium").notNull(),
+    status: varchar("status", { length: 32 }).default("pending").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    reviewedAt: timestamp("reviewed_at"),
+  },
+  table => ({
+    agentIdx: index("loan_officer_agent_pairings_agent_idx").on(table.agentId),
+    stateIdx: index("loan_officer_agent_pairings_state_idx").on(table.state),
+  }),
+);
+
+export type LoanOfficerAgentPairing = typeof loanOfficerAgentPairings.$inferSelect;
+export type InsertLoanOfficerAgentPairing = typeof loanOfficerAgentPairings.$inferInsert;
