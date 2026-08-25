@@ -18,6 +18,8 @@ import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
+  CalendarClock,
   Check,
   ExternalLink,
   HelpCircle,
@@ -91,7 +93,11 @@ export default function ReviewQueue() {
   const [detail, setDetail] = useState<Finding | null>(null);
 
   const { data: queue, isLoading } = trpc.verification.queue.useQuery({ state });
+  const { data: agents } = trpc.agents.list.useQuery({ state }, { enabled: state === "Oregon" });
   const { data: runs } = trpc.verification.runs.useQuery({ state });
+  const { data: scheduleStatus } = trpc.verification.scheduleStatus.useQuery(undefined, {
+    enabled: state === "Oregon",
+  });
 
   const runCheck = trpc.verification.run.useMutation({
     onSuccess: result => {
@@ -128,6 +134,8 @@ export default function ReviewQueue() {
   });
 
   const lastRun = runs?.[0];
+  const formatScheduleDate = (value: string | Date | null | undefined) =>
+    value ? new Date(value).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "Not yet run";
 
   const filtered = useMemo(() => {
     const rows = (queue ?? []) as Finding[];
@@ -143,6 +151,18 @@ export default function ReviewQueue() {
 
   const changedCount = ((queue ?? []) as Finding[]).filter(r => r.outcome === "changed").length;
   const unverifiedCount = ((queue ?? []) as Finding[]).filter(r => r.outcome === "unverified").length;
+  const brokerSourceByAgentId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const agent of agents ?? []) {
+      const urls = (agent.officeDataSources ?? "")
+        .split(/\s*;\s*/)
+        .map(value => value.trim())
+        .filter(value => /^https?:\/\//i.test(value));
+      const preferred = urls.find(url => !/(zillow|realtrends|youtube|facebook|instagram|linkedin|experience\\.com)/i.test(url));
+      if (preferred ?? urls[0]) map.set(agent.id, preferred ?? urls[0]);
+    }
+    return map;
+  }, [agents]);
 
   return (
     <div className="max-w-[1600px]">
@@ -197,6 +217,43 @@ export default function ReviewQueue() {
           </div>
         ))}
       </div>
+
+      {/* Monthly schedule status */}
+      {state === "Oregon" && (
+        <div className="border border-foreground/15 bg-card px-5 py-4 mb-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="eyebrow text-accent mb-2 flex items-center gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5" /> Monthly verification schedule
+              </p>
+              <p className="font-display text-2xl font-bold">
+                {scheduleStatus?.enabled ? "Active" : scheduleStatus?.configured ? "Paused" : "Not configured"}
+              </p>
+              <p className="font-serif-text text-sm text-muted-foreground mt-1">
+                One-at-a-time review of 60 agents and paired principal/managing principal broker sources.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3 text-right">
+              <div>
+                <p className="eyebrow text-muted-foreground">Last run</p>
+                <p className="font-serif-text text-sm mt-1">{formatScheduleDate(scheduleStatus?.lastRunAt)}</p>
+              </div>
+              <div>
+                <p className="eyebrow text-muted-foreground">Next run</p>
+                <p className="font-serif-text text-sm mt-1">{formatScheduleDate(scheduleStatus?.nextExecutionAt)}</p>
+              </div>
+              <div>
+                <p className="eyebrow text-muted-foreground">Approval queue</p>
+                <p className="font-display text-xl font-bold mt-0.5">{scheduleStatus?.pendingApprovalCount ?? changedCount + unverifiedCount}</p>
+              </div>
+              <div>
+                <p className="eyebrow text-muted-foreground">Reminder</p>
+                <p className="font-serif-text text-sm mt-1">{formatScheduleDate(scheduleStatus?.lastNotificationSentAt)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* How this works — set expectations honestly */}
       <div className="border border-foreground/15 bg-secondary/30 px-5 py-4 mb-8">
@@ -317,6 +374,16 @@ export default function ReviewQueue() {
                         className="eyebrow text-accent hover:underline flex items-center gap-1"
                       >
                         <ExternalLink className="h-3 w-3" /> Source checked
+                      </a>
+                    )}
+                    {f.outcome === "unverified" && brokerSourceByAgentId.get(f.agentId) && (
+                      <a
+                        href={brokerSourceByAgentId.get(f.agentId)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="eyebrow text-accent hover:underline flex items-center gap-1"
+                      >
+                        <Building2 className="h-3 w-3" /> Broker / office source
                       </a>
                     )}
                     {f.confidence && (

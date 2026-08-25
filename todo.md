@@ -100,3 +100,7 @@
 - [x] Create and verify the monthly production schedule, then checkpoint and publish (enabled task 4ENAXZJ3ExAoPXoZg5sCk7; 0 0 8 1 * * UTC; callback verified in production configuration)
 - [x] Add an explicit scheduled verification path for paired principal/managing principal broker or office source pages, not only agent pages
 - [x] Add a Vitest regression for duplicate monthly callback suppression within the idempotency window
+- [x] Add dashboard schedule-status panel with monthly job last-run, next-run, enabled state, and approval status
+- [x] Add targeted source links for the 14 inconclusive paired principal/managing principal broker records and preserve conservative verification outcomes (record-specific URLs persisted in officeDataSources; no unsupported broker changes applied)
+- [x] Validate and, where needed, add record-specific targeted office/principal-broker source URLs for each of the 14 inconclusive Oregon records
+- [x] Add a data-contract regression proving every intended inconclusive record resolves a broker/office source link (102 tests passing)

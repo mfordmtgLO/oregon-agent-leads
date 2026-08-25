@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { parse as parseCookieHeader } from "cookie";
+import { listHeartbeatJobs } from "./_core/heartbeat";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -259,6 +260,24 @@ export const appRouter = router({
     ingest: sessionProcedure
       .input(z.object({ state: stateSchema.optional(), findings: z.array(researchFindingSchema) }))
       .mutation(({ input }) => ingestResearchFindings(input.state ?? DEFAULT_STATE, input.findings)),
+    /** Monthly production job status for the review dashboard. */
+    scheduleStatus: sessionProcedure.query(async () => {
+      const schedule = await db.getVerificationScheduleByName("monthly-oregon-agent-verification");
+      const heartbeat = await listHeartbeatJobs("");
+      const job = heartbeat.jobs.find(item => item.name === "monthly-oregon-agent-verification");
+      const pending = await db.listPendingVerifications(DEFAULT_STATE);
+      return {
+        configured: Boolean(schedule && job),
+        enabled: Boolean(schedule?.enabled && job?.isEnable),
+        cronExpression: schedule?.cronExpression ?? job?.cronExpression ?? null,
+        lastRunAt: schedule?.lastRunAt ?? null,
+        lastRunId: schedule?.lastRunId ?? null,
+        lastNotificationSentAt: schedule?.lastNotificationSentAt ?? null,
+        nextExecutionAt: job?.nextExecutionAt ?? null,
+        pendingApprovalCount: pending.length,
+        taskUid: schedule?.scheduleCronTaskUid ?? job?.taskUid ?? null,
+      };
+    }),
   }),
 });
 
