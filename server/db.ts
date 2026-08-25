@@ -9,6 +9,8 @@ import {
   InsertVerificationRun,
   users,
   verificationRuns,
+  verificationSchedules,
+  InsertVerificationSchedule,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -246,4 +248,45 @@ export async function supersedePendingForAgents(agentIds: number[]) {
     .where(
       and(eq(agentVerifications.status, "pending"), inArray(agentVerifications.agentId, agentIds)),
     );
+}
+
+// ---------------------------------------------------------------------------
+// Recurring verification schedule
+// ---------------------------------------------------------------------------
+export async function getVerificationScheduleByTaskUid(taskUid: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(verificationSchedules)
+    .where(eq(verificationSchedules.scheduleCronTaskUid, taskUid))
+    .limit(1);
+  return rows[0];
+}
+
+export async function getVerificationScheduleByName(name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(verificationSchedules)
+    .where(eq(verificationSchedules.name, name))
+    .limit(1);
+  return rows[0];
+}
+
+export async function createVerificationSchedule(schedule: InsertVerificationSchedule) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(verificationSchedules).values(schedule);
+  return result[0].insertId;
+}
+
+export async function updateVerificationSchedule(
+  id: number,
+  fields: Partial<InsertVerificationSchedule>,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(verificationSchedules).set(fields).where(eq(verificationSchedules.id, id));
 }

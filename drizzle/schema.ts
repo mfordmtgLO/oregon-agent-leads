@@ -1,4 +1,4 @@
-import { boolean, double, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, double, index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -142,3 +142,28 @@ export const agentVerifications = mysqlTable("agent_verifications", {
 
 export type AgentVerification = typeof agentVerifications.$inferSelect;
 export type InsertAgentVerification = typeof agentVerifications.$inferInsert;
+
+/**
+ * Project-owned recurring verification schedule. The task UID is the authoritative
+ * identifier used by the scheduled callback; the callback never trusts request body data.
+ */
+export const verificationSchedules = mysqlTable(
+  "verification_schedules",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    name: varchar("name", { length: 120 }).notNull().unique(),
+    state: varchar("state", { length: 32 }).default("Oregon").notNull(),
+    scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }).unique(),
+    cronExpression: varchar("cron_expression", { length: 64 }).notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    lastRunAt: timestamp("last_run_at"),
+    lastRunId: int("last_run_id"),
+    lastNotificationSentAt: timestamp("last_notification_sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ taskUidIdx: index("verification_schedules_task_uid_idx").on(table.scheduleCronTaskUid) }),
+);
+
+export type VerificationSchedule = typeof verificationSchedules.$inferSelect;
+export type InsertVerificationSchedule = typeof verificationSchedules.$inferInsert;

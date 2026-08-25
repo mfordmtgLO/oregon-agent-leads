@@ -20,6 +20,7 @@ import {
   checkAgent,
   recomputeRanks,
   type AgentCheckResult,
+  type FetchedPage,
 } from "./verification";
 
 /** Sweep concurrency: modest so a run stays well inside the request budget. */
@@ -80,10 +81,12 @@ export async function runVerificationSweep(
   options: {
     limit?: number;
     agentIds?: number[];
-    fetchImpl?: Parameters<typeof checkAgent>[1] extends { fetchImpl?: infer F } ? F : never;
+    fetchImpl?: (url: string) => Promise<FetchedPage>;
+    /** Monthly low-credit mode: process one agent at a time instead of parallel fetches. */
+    sequential?: boolean;
   } = {},
 ) {
-  const { limit, agentIds, fetchImpl } = options;
+  const { limit, agentIds, fetchImpl, sequential = false } = options;
   const all = await db.listAgents(state);
   // Only real agents are checked; office/broker rows are derived, not stored.
   let targets = agentIds ? all.filter(a => agentIds.includes(a.id)) : all;
@@ -95,9 +98,13 @@ export async function runVerificationSweep(
   const runId = await db.createVerificationRun({ state, source: "automated", status: "running" });
 
   try {
-    const results = await mapLimit(targets, CONCURRENCY, agent =>
-      checkAgent(agent, { knownBrokerages, ...(fetchImpl ? { fetchImpl } : {}) }),
-    );
+    const results = sequential
+      ? await mapLimit(targets, 1, agent =>
+          checkAgent(agent, { knownBrokerages, ...(fetchImpl ? { fetchImpl } : {}) }),
+        )
+      : await mapLimit(targets, CONCURRENCY, agent =>
+          checkAgent(agent, { knownBrokerages, ...(fetchImpl ? { fetchImpl } : {}) }),
+        );
 
     // A fresh sweep supersedes older undecided findings for the same agents,
     // so the queue never shows two competing proposals for one agent.

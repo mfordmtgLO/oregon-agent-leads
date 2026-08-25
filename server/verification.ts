@@ -492,3 +492,88 @@ export function buildAgentUpdate(finding: ProposedChanges): Record<string, unkno
   }
   return update;
 }
+
+export type PrincipalBrokerCheckResult = {
+  agentId: number;
+  agentName: string;
+  recordedPrincipalBroker: string | null;
+  sourceUrl: string | null;
+  outcome: "confirmed" | "unverified";
+  evidenceNote: string;
+};
+
+/** Select one stored office/broker source URL, excluding social, ranking, and review pages. */
+export function pickPrincipalBrokerSourceUrl(agent: Agent): string | null {
+  const raw = agent.officeDataSources ?? "";
+  const urls = raw
+    .split(/\s*;\s*/)
+    .map(value => value.trim())
+    .filter(value => /^https?:\/\//i.test(value));
+  const preferred = urls.find(url => !/(zillow|realtrends|youtube|facebook|instagram|linkedin|experience\.com)/i.test(url));
+  return preferred ?? urls[0] ?? null;
+}
+
+/**
+ * Check the paired principal/managing principal broker source separately from the
+ * agent page. This is intentionally conservative and sequential: it confirms only
+ * when the recorded broker's exact name appears on the stored office source page.
+ */
+export async function checkPrincipalBrokerSource(
+  agent: Agent,
+  options: { fetchImpl?: typeof fetchPage } = {},
+): Promise<PrincipalBrokerCheckResult> {
+  const recorded = isPlaceholder(agent.principalBrokerName) ? null : agent.principalBrokerName;
+  const sourceUrl = pickPrincipalBrokerSourceUrl(agent);
+  if (!recorded || !sourceUrl) {
+    return {
+      agentId: agent.id,
+      agentName: agent.fullName,
+      recordedPrincipalBroker: recorded,
+      sourceUrl,
+      outcome: "unverified",
+      evidenceNote: "No distinct stored office/principal-broker source or broker name was available for a separate monthly check.",
+    };
+  }
+  const page = await (options.fetchImpl ?? fetchPage)(sourceUrl);
+  if (!page.ok) {
+    return {
+      agentId: agent.id,
+      agentName: agent.fullName,
+      recordedPrincipalBroker: recorded,
+      sourceUrl,
+      outcome: "unverified",
+      evidenceNote: `The stored office/principal-broker source was not usable (HTTP ${page.status || "network error"}).`,
+    };
+  }
+  const visible = extractVisibleText(page.text);
+  const escaped = recorded.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  if (new RegExp(escaped, "i").test(visible)) {
+    return {
+      agentId: agent.id,
+      agentName: agent.fullName,
+      recordedPrincipalBroker: recorded,
+      sourceUrl,
+      outcome: "confirmed",
+      evidenceNote: `Recorded principal/managing principal broker "${recorded}" appears on the stored office source page.`,
+    };
+  }
+  return {
+    agentId: agent.id,
+    agentName: agent.fullName,
+    recordedPrincipalBroker: recorded,
+    sourceUrl,
+    outcome: "unverified",
+    evidenceNote: `The stored office source page did not provide a direct match for recorded principal/managing principal broker "${recorded}".`,
+  };
+}
+
+export async function runPrincipalBrokerSweep(
+  agents: Agent[],
+  options: { fetchImpl?: typeof fetchPage } = {},
+): Promise<PrincipalBrokerCheckResult[]> {
+  const results: PrincipalBrokerCheckResult[] = [];
+  for (const agent of agents) {
+    results.push(await checkPrincipalBrokerSource(agent, options));
+  }
+  return results;
+}

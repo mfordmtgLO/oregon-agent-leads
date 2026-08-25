@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { ENV } from "./env";
 import { isAuthorizedSyncRequest, toOregonAgentSyncExport } from "../syncExport";
 import * as db from "../db";
+import { handleMonthlyVerification } from "../scheduledVerification";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +40,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  app.post("/api/scheduled/monthlyVerification", handleMonthlyVerification);
   app.get("/api/sync/agents", async (req, res) => {
     if (!isAuthorizedSyncRequest(req.header("authorization"), ENV.agentSyncToken)) {
       return res.status(401).json({ error: "Unauthorized" });

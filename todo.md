@@ -93,3 +93,10 @@
 - [x] Checkpoint + publish, then verify on the live URL (live login, protected routes, and ingest endpoint verified)
 - [x] Research pass on 60 agents using low-credit sequential checks of existing profile URLs; 46 sources supported the roster record, while 14 were blocked, stale, or inconclusive and were conservatively left unverified
 - [x] Ingest 60 findings into production run 420001; verified 60 checked agents, 0 unmatched, 46 confirmed, 14 conservatively unverified, and complete run history
+- [x] Add durable monthly verification schedule ownership and status for Oregon
+- [x] Add a low-credit sequential scheduled sweep covering all 60 agents plus paired principal/managing principal broker source pages
+- [x] Send an owner approval reminder after each monthly run with counts and review-queue link
+- [x] Add scheduled callback authentication, idempotency, and Vitest coverage (101 tests passing)
+- [ ] Create and verify the monthly production schedule, then checkpoint and publish
+- [x] Add an explicit scheduled verification path for paired principal/managing principal broker or office source pages, not only agent pages
+- [x] Add a Vitest regression for duplicate monthly callback suppression within the idempotency window
