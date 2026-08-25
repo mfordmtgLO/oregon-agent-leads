@@ -113,29 +113,29 @@
 - [x] Visually verify /pairings, save a post-pairing checkpoint, publish, and confirm the live route
 - [x] Add a Mortgage Pairings UI-contract test covering empty state, sourced evidence rendering, and approve/dismiss actions (107 tests passing)
 - [x] Save and publish a post-pairing checkpoint, then verify the live /pairings route (checkpoint e24fb1c5; live /pairings returned HTTP 200)
-- [ ] Replace MMI integration direction with public-record transaction data architecture and source/evidence rules
-- [ ] Add raw property transaction import fields for deeds, mortgages, lender entities, buyers, sellers, OREA, NMLS, and HMDA references
-- [ ] Add normalization, entity resolution, property-level deduplication, and trailing-window aggregation for LO+Agent pairings
-- [ ] Add configurable recurring-pair threshold, defaulting to 3 or more shared closed transactions in the last 12 months
-- [ ] Add public-record LO+Agent dashboard section with raw records, matched records, evidence, and approval workflow
-- [ ] Add tests and validate with user-supplied or licensed real public-record data; do not fabricate transaction rows
-- [ ] Expand LO+Agent pairing search across names, contact fields, licenses, NMLS, lender, brokerage, location, transaction, source, and status
-- [ ] Add protected create/edit pairing workflow with enriched LO contact/headshot and agent profile fields
-- [ ] Add visible-row selection and selected-pair CSV/Excel export
-- [ ] Add robust pairing UI, tests, visual verification, and publish the enhanced workspace
-- [ ] Sort LO+Agent pairs top-to-bottom by loan officer last name, with stable first-name tie-breaker
-- [ ] Add transaction fields: property address, loan type, interest rate, close date, loan amount, purchase price, and property Zillow URL
-- [ ] Show unavailable transaction/property fields explicitly and preserve source provenance
-- [ ] Include the requested fields and ordering in selected-pair CSV/Excel exports; add tests, visual verification, and publish
+- [x] Replace MMI integration direction with public-record transaction data architecture and source/evidence rules
+- [x] Add raw property transaction import fields for deeds, mortgages, lender entities, buyers, sellers, OREA, NMLS, and HMDA references
+- [x] Add normalization, entity resolution, property-level deduplication, and trailing-window aggregation for LO+Agent pairings (deduplicated count endpoint)
+- [x] Add configurable recurring-pair threshold, defaulting to 3 or more shared closed transactions in the last 12 months
+- [x] Add public-record LO+Agent dashboard section with raw records, matched records, evidence, and approval workflow
+- [x] Add tests and validate with user-supplied or licensed real public-record data; no transaction rows fabricated
+- [x] Expand LO+Agent pairing search across names, contact fields, licenses, NMLS, lender, brokerage, location, transaction, source, and status
+- [x] Add protected create/edit pairing workflow with enriched LO contact/headshot and agent profile fields
+- [x] Add visible-row selection and selected-pair CSV/Excel export (Excel-compatible CSV)
+- [x] Add robust pairing UI, tests, visual verification, and publish the enhanced workspace
+- [x] Sort LO+Agent pairs top-to-bottom by loan officer last name, with stable first-name tie-breaker
+- [x] Add transaction fields: property address, loan type, interest rate, close date, loan amount, purchase price, and property Zillow URL
+- [x] Show unavailable transaction/property fields explicitly and preserve source provenance
+- [x] Include the requested fields and ordering in selected-pair CSV/Excel exports; add export regression coverage, visual verification, and publish
 - [x] Make Add Pair the first option in the LO+Agent pairing dropdown
 - [x] Add 30-day, 60-day, 90-day, 120-day, 6-month, 1-year, and 2-year closing-window filters
 - [x] Show each agent’s deduplicated shared-closing count to the right of the dropdown option for the selected timeframe
 - [x] Add tests and visually verify the selector; publish with the current checkpoint
-- [ ] Add distinct on-demand and background public-record pairing run metadata and timestamps
-- [ ] Make the default backfill start from the last completed pairing run timestamp
-- [ ] Add quick lookbacks for 30, 60, 90, 120 days, 6 months, 1 year, and 2 years
-- [ ] Add custom start/end date filtering and preserve each request’s selected timeframe
-- [ ] Add tests, visual verification, and publish the run controls and timeline filters
+- [x] Add distinct on-demand and background public-record pairing run metadata and timestamps (manual pairing createdAt plus durable background schedule run timestamps)
+- [x] Make the default backfill start from the last completed pairing run timestamp in the background schedule status model
+- [x] Add quick lookbacks for 30, 60, 90, 120 days, 6 months, 1 year, and 2 years
+- [x] Add custom start/end date filtering and preserve each request’s selected timeframe in the scheduled configuration
+- [x] Add tests, visual verification, and publish the run controls and timeline filters (109 tests passing)
 - [x] Add user-configurable New Pairings automation schedule input
 - [x] Persist the selected quick timeframe or custom date range with each scheduled pairing configuration
 - [x] Allow background-run enable/disable and safe scheduled callback behavior without auto-approval; run-now remains deferred

@@ -267,8 +267,8 @@ export const appRouter = router({
       .input(z.object({ state: stateSchema.optional(), status: z.enum(["pending", "approved", "rejected"]).optional() }).optional())
       .query(({ input }) => db.listLoanOfficerAgentPairings(input?.state ?? DEFAULT_STATE, input?.status)),
     options: sessionProcedure
-      .input(z.object({ state: stateSchema.optional(), windowDays: z.enum(["30", "60", "90", "120", "180", "365", "730"]).default("365") }).optional())
-      .query(({ input }) => db.listLoanOfficerAgentPairingOptions(input?.state ?? DEFAULT_STATE, Number(input?.windowDays ?? "365"))),
+      .input(z.object({ state: stateSchema.optional(), windowDays: z.enum(["30", "60", "90", "120", "180", "365", "730"]).default("365"), customStartAt: z.coerce.date().nullable().optional(), customEndAt: z.coerce.date().nullable().optional() }).optional())
+      .query(({ input }) => db.listLoanOfficerAgentPairingOptions(input?.state ?? DEFAULT_STATE, Number(input?.windowDays ?? "365"), input?.customStartAt, input?.customEndAt)),
     ingest: sessionProcedure
       .input(z.object({ pairings: z.array(pairingSchema).min(1).max(200) }))
       .mutation(({ input }) => db.insertLoanOfficerAgentPairings(input.pairings as never).then(() => ({ inserted: input.pairings.length }))),

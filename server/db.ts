@@ -339,7 +339,7 @@ export async function listLoanOfficerAgentPairings(state = "Oregon", status?: st
     }));
 }
 
-export async function listLoanOfficerAgentPairingOptions(state = "Oregon", windowDays = 365) {
+export async function listLoanOfficerAgentPairingOptions(state = "Oregon", windowDays = 365, customStartAt?: Date | null, customEndAt?: Date | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const [pairingRows, transactions] = await Promise.all([
@@ -350,14 +350,16 @@ export async function listLoanOfficerAgentPairingOptions(state = "Oregon", windo
       .orderBy(desc(loanOfficerAgentPairings.loanOfficerName)),
     db.select().from(propertyTransactions).where(eq(propertyTransactions.state, state)),
   ]);
-  const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+  const cutoff = customStartAt?.getTime() ?? (Date.now() - windowDays * 24 * 60 * 60 * 1000);
+  const endCutoff = customEndAt?.getTime() ?? Number.POSITIVE_INFINITY;
   return pairingRows.map(row => {
     const agentNameKey = normalizeMatchText(row.agentName);
     const licenseKey = normalizeMatchText(row.agentRealEstateLicense);
     const loNmlsKey = normalizeMatchText(row.pairing.loanOfficerNmlsId);
     const seen = new Set<string>();
     for (const transaction of transactions) {
-      if (new Date(transaction.recordingDate).getTime() < cutoff) continue;
+      const recordedAt = new Date(transaction.recordingDate).getTime();
+      if (recordedAt < cutoff || recordedAt > endCutoff) continue;
       if (loNmlsKey && normalizeMatchText(transaction.loanOfficerNmls) !== loNmlsKey) continue;
       const agentMatches = licenseKey && normalizeMatchText(transaction.buyerAgentLicense) === licenseKey;
       const nameMatches = agentNameKey && normalizeMatchText(transaction.buyerAgentName) === agentNameKey;
