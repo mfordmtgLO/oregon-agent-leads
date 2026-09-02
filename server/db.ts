@@ -136,6 +136,12 @@ export async function updateAgentNotes(id: number, notes: string) {
   await db.update(agents).set({ notes }).where(eq(agents.id, id));
 }
 
+export async function updatePrincipalBrokerNotes(agentId: number, notes: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(agents).set({ principalBrokerNotes: notes }).where(eq(agents.id, agentId));
+}
+
 export async function updateAgent(id: number, fields: Partial<InsertAgent>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

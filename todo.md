@@ -140,3 +140,6 @@
 - [x] Persist the selected quick timeframe or custom date range with each scheduled pairing configuration
 - [x] Allow background-run enable/disable and safe scheduled callback behavior without auto-approval; run-now remains deferred
 - [x] Fix pairing input contract for loan and property fields, then add tests, visual verification, and publish (109 tests passing; live publish pending checkpoint)
+- [x] Add protected notes persistence for principal-broker/office records without sharing individual-agent notes
+- [x] Add editable Notes controls to principal-broker cards and profile dialogs
+- [x] Add broker-notes tests, verify responsive presentation, and publish (dedicated regression coverage added; typecheck clean, 112 tests passing, mobile layout verified)

@@ -62,6 +62,8 @@ export const agents = mysqlTable("agents", {
   officeEstimationNotes: text("officeEstimationNotes"),
   officeDataConfidence: varchar("officeDataConfidence", { length: 32 }),
   officeDataSources: text("officeDataSources"),
+  /** CRM notes for the derived office/principal-broker record; never inherited from agent notes. */
+  principalBrokerNotes: text("principalBrokerNotes"),
   notes: text("notes"),
   isCustom: boolean("isCustom").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

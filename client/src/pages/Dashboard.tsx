@@ -1,6 +1,7 @@
 import AgentAvatar from "@/components/AgentAvatar";
 import BrokerSection from "@/components/BrokerSection";
 import NotesEditor from "@/components/NotesEditor";
+import PrincipalBrokerNotesEditor from "@/components/PrincipalBrokerNotesEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -456,10 +457,7 @@ export default function Dashboard() {
               )}
               <div className="rule-h" />
               {detailFresh.isDerived ? (
-                <p className="eyebrow text-muted-foreground/70 leading-relaxed">
-                  Notes are saved on individual agent records. Open an agent at this office to log a
-                  conversation.
-                </p>
+                <PrincipalBrokerNotesEditor agentId={detailFresh.brokerSourceAgentId ?? 0} initialNotes={detailFresh.notes} />
               ) : (
                 <NotesEditor agentId={detailFresh.id} initialNotes={detailFresh.notes} />
               )}
@@ -668,9 +666,7 @@ function AgentCard({
         )}
         <div className="mt-auto pt-2">
           {isBroker ? (
-            <p className="eyebrow text-muted-foreground/60 leading-relaxed">
-              Office record · notes live on agent profiles
-            </p>
+            <PrincipalBrokerNotesEditor agentId={agent.brokerSourceAgentId ?? 0} initialNotes={agent.notes} compact />
           ) : (
             <NotesEditor agentId={agent.id} initialNotes={agent.notes} compact />
           )}

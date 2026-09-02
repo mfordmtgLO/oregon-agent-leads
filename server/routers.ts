@@ -211,7 +211,13 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int(), notes: z.string() }))
       .mutation(async ({ input }) => {
         await db.updateAgentNotes(input.id, input.notes);
-        return { success: true } as const;
+        return { success: true };
+      }),
+    updatePrincipalBrokerNotes: sessionProcedure
+      .input(z.object({ agentId: z.number().int(), notes: z.string() }))
+      .mutation(async ({ input }) => {
+        await db.updatePrincipalBrokerNotes(input.agentId, input.notes);
+        return { success: true };
       }),
     update: sessionProcedure
       .input(agentInputSchema.partial().extend({ id: z.number().int() }))

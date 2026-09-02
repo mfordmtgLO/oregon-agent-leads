@@ -12,6 +12,8 @@ export type DirectoryRecord = Agent & {
   recordType: "agent" | "principal_broker";
   /** Synthetic broker rows are not editable/persistable (no DB row of their own). */
   isDerived: boolean;
+  /** Representative persisted agent row used to store office-level notes. */
+  brokerSourceAgentId?: number;
 };
 
 /** Deterministic negative id so broker rows never collide with real agent ids. */
@@ -44,6 +46,7 @@ export function derivePrincipalBrokerDirectory(agents: Agent[]): DirectoryRecord
       ...agent,
       recordType: "principal_broker",
       isDerived: true,
+      brokerSourceAgentId: agent.id,
       id: stableBrokerId(name),
       fullName: name,
       phone: agent.principalBrokerPhone,
@@ -65,8 +68,8 @@ export function derivePrincipalBrokerDirectory(agents: Agent[]): DirectoryRecord
       // The broker IS the principal broker, so drop the nested broker block.
       principalBrokerName: null,
       principalBrokerTitle: null,
-      // Office methodology is reference material, not a personal CRM note.
-      notes: null,
+      // Office notes are stored separately from the co-located agent's personal CRM notes.
+      notes: agent.principalBrokerNotes ?? null,
       isCustom: false,
     });
   }
