@@ -94,6 +94,7 @@ export default function OfficeRankings() {
   const [scope, setScope] = useState<ScopeFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selectedOfficeKeys, setSelectedOfficeKeys] = useState<string[]>([]);
 
   const filtered = useMemo(() => {
     if (!offices) return [];
@@ -114,6 +115,9 @@ export default function OfficeRankings() {
     if (sortDir === "desc") sorted.reverse();
     return sorted;
   }, [offices, query, scope, sortKey, sortDir]);
+
+  const visibleOfficeKeys = filtered.map(office => `${office.officeBuysideRank}-${office.brokerage}-${office.principalBrokerName}`);
+  const toggleOffice = (key: string, checked: boolean) => setSelectedOfficeKeys(current => checked ? Array.from(new Set([...current, key])) : current.filter(item => item !== key));
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -169,6 +173,7 @@ export default function OfficeRankings() {
             <SelectItem value="broker" className="eyebrow">Principal Broker</SelectItem>
           </SelectContent>
         </Select>
+        <label className="flex items-center gap-2 eyebrow whitespace-nowrap"><input type="checkbox" checked={visibleOfficeKeys.length > 0 && visibleOfficeKeys.every(key => selectedOfficeKeys.includes(key))} onChange={event => setSelectedOfficeKeys(event.target.checked ? visibleOfficeKeys : [])} /> Select all visible offices</label>
       </div>
 
       {/* Results */}
@@ -203,6 +208,7 @@ export default function OfficeRankings() {
           <Table>
             <TableHeader>
               <TableRow className="border-foreground/15 hover:bg-transparent">
+                <TableHead className="w-10"><span className="sr-only">Select</span></TableHead>
                 <SortHeader label="Rank" k="rank" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="w-16" />
                 <SortHeader label="Brokerage" k="brokerage" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <SortHeader label="City" k="city" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -218,6 +224,7 @@ export default function OfficeRankings() {
                   key={`${office.officeBuysideRank}-${office.brokerage}-${office.principalBrokerName}`}
                   className="border-foreground/10 hover:bg-secondary/60"
                 >
+                  <TableCell><input type="checkbox" checked={selectedOfficeKeys.includes(`${office.officeBuysideRank}-${office.brokerage}-${office.principalBrokerName}`)} onChange={event => toggleOffice(`${office.officeBuysideRank}-${office.brokerage}-${office.principalBrokerName}`, event.target.checked)} aria-label={`Select office ${office.brokerage ?? ""}`} /></TableCell>
                   <TableCell className="font-display font-bold text-xl">
                     {office.officeBuysideRank}
                   </TableCell>

@@ -243,10 +243,11 @@ export const appRouter = router({
         return { success: true } as const;
       }),
     exportCsv: sessionProcedure
-      .input(z.object({ state: stateSchema.optional() }).optional())
+      .input(z.object({ state: stateSchema.optional(), ids: z.array(z.number().int()).optional() }).optional())
       .mutation(async ({ input }) => {
       const all = await db.listAgents(input?.state);
-      const sorted = [...all].sort((a, b) => {
+      const scoped = input?.ids?.length ? all.filter(agent => input.ids!.includes(agent.id)) : all;
+      const sorted = [...scoped].sort((a, b) => {
         const ra = a.realtrendsRank ?? Number.MAX_SAFE_INTEGER;
         const rb = b.realtrendsRank ?? Number.MAX_SAFE_INTEGER;
         return ra - rb;

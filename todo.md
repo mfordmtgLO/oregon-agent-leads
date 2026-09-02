@@ -143,3 +143,8 @@
 - [x] Add protected notes persistence for principal-broker/office records without sharing individual-agent notes
 - [x] Add editable Notes controls to principal-broker cards and profile dialogs
 - [x] Add broker-notes tests, verify responsive presentation, and publish (dedicated regression coverage added; typecheck clean, 112 tests passing, mobile layout verified)
+- [x] Add checkbox selection for individual agents with select-one, multi-select, and select-all behavior
+- [x] Add checkbox selection for principal brokers with select-one, multi-select, and select-all behavior
+- [x] Add checkbox selection for offices with select-one, multi-select, and select-all behavior
+- [x] Add an explicit Visible list only export checkbox that exports active filtered records when enabled
+- [x] Add selection/export tests, visually verify the directory and office rankings views, and publish (114 tests passing; typecheck clean; mobile routes checked)

@@ -34,6 +34,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -137,6 +138,8 @@ export default function Dashboard() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [view, setView] = useState<ViewMode>("cards");
   const [detailAgent, setDetailAgent] = useState<DirectoryRecord | null>(null);
+  const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
+  const [visibleListOnly, setVisibleListOnly] = useState(false);
   const directoryRecords = useMemo(() => buildDirectory(agents ?? []), [agents]);
   const principalBrokers = useMemo(
     () => directoryRecords.filter(record => record.recordType === "principal_broker"),
@@ -189,6 +192,10 @@ export default function Dashboard() {
     return sorted;
   }, [agents, directoryRecords, query, scope, sortKey, sortDir]);
 
+  const selectedVisibleIds = filtered.filter(record => record.recordType === "agent" && selectedRecordIds.includes(record.id)).map(record => record.id);
+  const toggleRecord = (id: number, checked: boolean) => setSelectedRecordIds(current => checked ? Array.from(new Set([...current, id])) : current.filter(existing => existing !== id));
+  const selectVisible = (recordType: "agent" | "principal_broker", checked: boolean) => setSelectedRecordIds(current => { const ids = filtered.filter(record => record.recordType === recordType).map(record => record.id); return checked ? Array.from(new Set([...current, ...ids])) : current.filter(id => !ids.includes(id)); });
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(d => (d === "asc" ? "desc" : "asc"));
@@ -234,21 +241,21 @@ export default function Dashboard() {
                 <ChevronDown className="h-3.5 w-3.5 ml-2" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-none">
+            <DropdownMenuContent align="end" className="rounded-none"><label className="flex items-center gap-2 px-2 py-2 eyebrow cursor-pointer"><input type="checkbox" checked={visibleListOnly} onChange={event => setVisibleListOnly(event.target.checked)} /> Visible list only</label><DropdownMenuSeparator />
               <DropdownMenuItem
                 className="eyebrow rounded-none cursor-pointer"
-                onClick={() => exportMutation.mutate({ state })}
+                onClick={() => exportMutation.mutate(visibleListOnly ? { state, ids: selectedVisibleIds.length ? selectedVisibleIds : filtered.filter(record => record.recordType === "agent").map(record => record.id) } : { state })}
               >
                 {state} only
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="eyebrow rounded-none cursor-pointer"
-                onClick={() => exportMutation.mutate({})}
+                onClick={() => exportMutation.mutate(visibleListOnly ? { ids: selectedVisibleIds.length ? selectedVisibleIds : filtered.filter(record => record.recordType === "agent").map(record => record.id) } : {})}
               >
                 All states
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu><div className="flex flex-wrap items-center gap-3 eyebrow"><label className="flex items-center gap-1.5"><input type="checkbox" checked={filtered.filter(r => r.recordType === "agent").length > 0 && filtered.filter(r => r.recordType === "agent").every(r => selectedRecordIds.includes(r.id))} onChange={event => selectVisible("agent", event.target.checked)} /> Select agents</label><label className="flex items-center gap-1.5"><input type="checkbox" checked={filtered.filter(r => r.recordType === "principal_broker").length > 0 && filtered.filter(r => r.recordType === "principal_broker").every(r => selectedRecordIds.includes(r.id))} onChange={event => selectVisible("principal_broker", event.target.checked)} /> Select brokers</label></div>
           <Link href="/add">
             <Button className="rounded-none eyebrow bg-foreground text-background hover:bg-accent hover:text-accent-foreground h-10">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -364,7 +371,7 @@ export default function Dashboard() {
       ) : view === "cards" ? (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((agent, i) => (
-            <AgentCard key={agent.id} agent={agent} index={i} onOpen={() => setDetailAgent(agent)} />
+            <AgentCard key={agent.id} agent={agent} index={i} selected={selectedRecordIds.includes(agent.id)} onSelect={checked => toggleRecord(agent.id, checked)} onOpen={() => setDetailAgent(agent)} />
           ))}
         </div>
       ) : (
@@ -374,6 +381,8 @@ export default function Dashboard() {
           sortDir={sortDir}
           onSort={toggleSort}
           onOpen={setDetailAgent}
+          selectedIds={selectedRecordIds}
+          onSelect={toggleRecord}
         />
       )}
 
@@ -550,10 +559,14 @@ function AgentCard({
   agent,
   index,
   onOpen,
+  selected,
+  onSelect,
 }: {
   agent: DirectoryRecord;
   index: number;
   onOpen: () => void;
+  selected: boolean;
+  onSelect: (checked: boolean) => void;
 }) {
   const isBroker = agent.recordType === "principal_broker";
   return (
@@ -562,6 +575,7 @@ function AgentCard({
       style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
     >
       <div className="relative">
+        <label className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-card/90 border border-foreground/20 px-2 py-1 eyebrow cursor-pointer"><input type="checkbox" checked={selected} onChange={event => onSelect(event.target.checked)} aria-label={`Select ${agent.fullName}`} /> Select</label>
         <AgentAvatar
           src={agent.headshotUrl}
           name={agent.fullName}
@@ -586,7 +600,7 @@ function AgentCard({
           )}
         </div>
         {agent.notes && !isBroker && (
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-20">
             <span title="Has notes" className="h-7 w-7 bg-card border border-foreground/20 flex items-center justify-center">
               <StickyNote className="h-3.5 w-3.5 text-accent" />
             </span>
@@ -723,18 +737,23 @@ function AgentTableView({
   sortDir,
   onSort,
   onOpen,
+  selectedIds,
+  onSelect,
 }: {
   agents: DirectoryRecord[];
   sortKey: SortKey;
   sortDir: SortDir;
   onSort: (k: SortKey) => void;
   onOpen: (a: DirectoryRecord) => void;
+  selectedIds: number[];
+  onSelect: (id: number, checked: boolean) => void;
 }) {
   return (
     <div className="border border-foreground/15 overflow-x-auto bg-card">
       <Table>
         <TableHeader>
           <TableRow className="border-foreground/15 hover:bg-transparent">
+            <TableHead className="w-10"><span className="sr-only">Select</span></TableHead>
             <SortHeader label="Rank" k="rank" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
             <SortHeader label="Agent" k="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="Brokerage" k="brokerage" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
@@ -752,6 +771,7 @@ function AgentTableView({
             const isBroker = agent.recordType === "principal_broker";
             return (
             <TableRow key={agent.id} className="border-foreground/10 hover:bg-secondary/60">
+              <TableCell><input type="checkbox" checked={selectedIds.includes(agent.id)} onChange={event => onSelect(agent.id, event.target.checked)} aria-label={`Select ${agent.fullName}`} /></TableCell>
               <TableCell className="font-display font-bold text-lg">
                 {isBroker ? (
                   <span
