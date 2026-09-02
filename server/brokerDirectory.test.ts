@@ -134,6 +134,15 @@ describe("principal broker directory derivation", () => {
     expect(remley.officeBuysideTransactions).toBe(854);
   });
 
+  it("creates distinct agent, office, and principal/managing broker projections", () => {
+    const directory = buildDirectory([dirk, shannon, geoff]);
+    expect(directory.filter(record => record.recordType === "agent")).toHaveLength(3);
+    expect(directory.filter(record => record.recordType === "office")).toHaveLength(2);
+    expect(directory.filter(record => record.recordType === "principal_broker")).toHaveLength(2);
+    expect(directory.filter(record => record.recordType === "office").every(record => record.fullName === record.brokerage)).toBe(true);
+    expect(directory.filter(record => record.recordType === "principal_broker").map(record => record.principalBrokerTitle)).toContain("Managing Principal Broker / Co Founder");
+  });
+
   it("assigns stable, negative, non-colliding ids", () => {
     const directory = buildDirectory([dirk, shannon, geoff]);
     const ids = directory.map(record => record.id);

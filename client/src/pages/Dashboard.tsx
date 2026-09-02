@@ -71,6 +71,7 @@ type SortKey = "rank" | "name" | "city" | "brokerage" | "sides" | "volume";
 type SortDir = "asc" | "desc";
 type ViewMode = "cards" | "table";
 type ScopeFilter = "all" | "name" | "city" | "brokerage";
+type DirectoryCategory = "agents" | "offices" | "principal_managing";
 
 const sortLabels: Record<SortKey, string> = {
   rank: "Rank",
@@ -140,6 +141,7 @@ export default function Dashboard() {
   const [detailAgent, setDetailAgent] = useState<DirectoryRecord | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
   const [visibleListOnly, setVisibleListOnly] = useState(false);
+  const [directoryCategory, setDirectoryCategory] = useState<DirectoryCategory>("agents");
   const directoryRecords = useMemo(() => buildDirectory(agents ?? []), [agents]);
   const principalBrokers = useMemo(
     () => directoryRecords.filter(record => record.recordType === "principal_broker"),
@@ -183,14 +185,18 @@ export default function Dashboard() {
     onError: err => toast.error(err.message),
   });
 
+  const categoryRecords = useMemo(() => {
+    if (directoryCategory === "agents") return directoryRecords.filter(record => record.recordType === "agent");
+    if (directoryCategory === "offices") return directoryRecords.filter(record => record.recordType === "office");
+    return directoryRecords.filter(record => record.recordType === "principal_broker");
+  }, [directoryCategory, directoryRecords]);
   const filtered = useMemo(() => {
     if (!agents) return [];
-    // Search covers agents AND principal broker rows.
-    const list = filterDirectory(directoryRecords, query, scope);
+    const list = filterDirectory(categoryRecords, query, scope);
     const sorted = [...list].sort((a, b) => compare(a, b, sortKey));
     if (sortDir === "desc") sorted.reverse();
     return sorted;
-  }, [agents, directoryRecords, query, scope, sortKey, sortDir]);
+  }, [agents, categoryRecords, query, scope, sortKey, sortDir]);
 
   const selectedVisibleIds = filtered.filter(record => record.recordType === "agent" && selectedRecordIds.includes(record.id)).map(record => record.id);
   const toggleRecord = (id: number, checked: boolean) => setSelectedRecordIds(current => checked ? Array.from(new Set([...current, id])) : current.filter(existing => existing !== id));
@@ -255,7 +261,7 @@ export default function Dashboard() {
                 All states
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu><div className="flex flex-wrap items-center gap-3 eyebrow"><label className="flex items-center gap-1.5"><input type="checkbox" checked={filtered.filter(r => r.recordType === "agent").length > 0 && filtered.filter(r => r.recordType === "agent").every(r => selectedRecordIds.includes(r.id))} onChange={event => selectVisible("agent", event.target.checked)} /> Select agents</label><label className="flex items-center gap-1.5"><input type="checkbox" checked={filtered.filter(r => r.recordType === "principal_broker").length > 0 && filtered.filter(r => r.recordType === "principal_broker").every(r => selectedRecordIds.includes(r.id))} onChange={event => selectVisible("principal_broker", event.target.checked)} /> Select brokers</label></div>
+          </DropdownMenu><div className="flex flex-wrap items-center gap-3 eyebrow"><label className="flex items-center gap-1.5"><input type="checkbox" checked={directoryCategory === "agents"} onChange={() => setDirectoryCategory("agents")} /> Agents</label><label className="flex items-center gap-1.5"><input type="checkbox" checked={directoryCategory === "offices"} onChange={() => setDirectoryCategory("offices")} /> Offices / Brokers</label><label className="flex items-center gap-1.5"><input type="checkbox" checked={directoryCategory === "principal_managing"} onChange={() => setDirectoryCategory("principal_managing")} /> Principal / Managing Brokers</label><span className="text-muted-foreground">{filtered.length} visible</span></div>
           <Link href="/add">
             <Button className="rounded-none eyebrow bg-foreground text-background hover:bg-accent hover:text-accent-foreground h-10">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -417,7 +423,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="rule-h" />
-              {detailFresh.recordType === "principal_broker" ? (
+              {detailFresh.recordType !== "agent" ? (
                 <div className="grid sm:grid-cols-3 gap-4">
                   <StatBlock
                     label="Office Buyside / Yr (Est.)"
@@ -440,7 +446,7 @@ export default function Dashboard() {
                   <StatBlock label="Sales Last 12 Mo." value={detailFresh.salesLast12Months || "—"} />
                 </div>
               )}
-              {detailFresh.recordType === "principal_broker" && detailFresh.officeEstimationNotes && (
+              {detailFresh.recordType !== "agent" && detailFresh.officeEstimationNotes && (
                 <div>
                   <p className="eyebrow text-muted-foreground mb-1.5">Office Estimation Methodology</p>
                   <p className="font-serif-text text-lg leading-relaxed">{detailFresh.officeEstimationNotes}</p>
@@ -568,7 +574,7 @@ function AgentCard({
   selected: boolean;
   onSelect: (checked: boolean) => void;
 }) {
-  const isBroker = agent.recordType === "principal_broker";
+  const isBroker = agent.recordType !== "agent";
   return (
     <article
       className="border border-foreground/15 bg-card flex flex-col group hover:border-foreground/40 transition-colors"
@@ -768,7 +774,7 @@ function AgentTableView({
         </TableHeader>
         <TableBody>
           {agents.map(agent => {
-            const isBroker = agent.recordType === "principal_broker";
+            const isBroker = agent.recordType !== "agent";
             return (
             <TableRow key={agent.id} className="border-foreground/10 hover:bg-secondary/60">
               <TableCell><input type="checkbox" checked={selectedIds.includes(agent.id)} onChange={event => onSelect(agent.id, event.target.checked)} aria-label={`Select ${agent.fullName}`} /></TableCell>

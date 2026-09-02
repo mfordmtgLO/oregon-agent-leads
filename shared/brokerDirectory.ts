@@ -9,7 +9,7 @@ import type { Agent } from "../drizzle/schema";
  * badge their rank as an office rank instead of a RealTrends agent rank.
  */
 export type DirectoryRecord = Agent & {
-  recordType: "agent" | "principal_broker";
+  recordType: "agent" | "office" | "principal_broker";
   /** Synthetic broker rows are not editable/persistable (no DB row of their own). */
   isDerived: boolean;
   /** Representative persisted agent row used to store office-level notes. */
@@ -67,7 +67,7 @@ export function derivePrincipalBrokerDirectory(agents: Agent[]): DirectoryRecord
       zillowUrl: null,
       // The broker IS the principal broker, so drop the nested broker block.
       principalBrokerName: null,
-      principalBrokerTitle: null,
+      principalBrokerTitle: agent.principalBrokerTitle?.trim() || "Principal Broker",
       // Office notes are stored separately from the co-located agent's personal CRM notes.
       notes: agent.principalBrokerNotes ?? null,
       isCustom: false,
@@ -80,8 +80,40 @@ export function derivePrincipalBrokerDirectory(agents: Agent[]): DirectoryRecord
   );
 }
 
+export function deriveOfficeDirectory(agents: Agent[]): DirectoryRecord[] {
+  const records = new Map<string, DirectoryRecord>();
+  for (const agent of agents) {
+    const office = agent.brokerage?.trim();
+    if (!office) continue;
+    const key = `${office.toLowerCase()}|${(agent.cityArea ?? "").toLowerCase()}`;
+    if (records.has(key)) continue;
+    records.set(key, {
+      ...agent,
+      recordType: "office",
+      isDerived: true,
+      brokerSourceAgentId: agent.id,
+      id: stableBrokerId(`office:${key}`),
+      fullName: office,
+      phone: null,
+      email: null,
+      websiteBioUrl: null,
+      zillowUrl: null,
+      realtrendsRank: null,
+      realtrendsTotalSides: null,
+      realtrendsVolume: null,
+      realtrendsVolumeNum: null,
+      salesLast12Months: null,
+      buyerSideTransactions: null,
+      otherProductionStats: null,
+      notes: null,
+      isCustom: false,
+    });
+  }
+  return Array.from(records.values()).sort((a, b) => (a.officeBuysideRank ?? Number.MAX_SAFE_INTEGER) - (b.officeBuysideRank ?? Number.MAX_SAFE_INTEGER) || a.fullName.localeCompare(b.fullName));
+}
+
 export function buildDirectory(agents: Agent[]): DirectoryRecord[] {
-  return [...agents.map(toAgentRecord), ...derivePrincipalBrokerDirectory(agents)];
+  return [...agents.map(toAgentRecord), ...deriveOfficeDirectory(agents), ...derivePrincipalBrokerDirectory(agents)];
 }
 
 export type DirectoryScope = "all" | "name" | "city" | "brokerage";

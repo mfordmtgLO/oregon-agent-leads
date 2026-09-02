@@ -7,8 +7,9 @@ const offices = readFileSync(new URL("../client/src/pages/OfficeRankings.tsx", i
 describe("directory selection and export contract", () => {
   it("supports individual and visible agent/broker selection", () => {
     expect(dashboard).toContain("selectedRecordIds");
-    expect(dashboard).toContain("Select agents");
-    expect(dashboard).toContain("Select brokers");
+    expect(dashboard).toContain("Agents");
+    expect(dashboard).toContain("Offices / Brokers");
+    expect(dashboard).toContain("Principal / Managing Brokers");
     expect(dashboard).toContain("Select ${agent.fullName}");
   });
   it("supports office selection and visible-list-only export", () => {

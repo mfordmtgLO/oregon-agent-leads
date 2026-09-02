@@ -148,3 +148,10 @@
 - [x] Add checkbox selection for offices with select-one, multi-select, and select-all behavior
 - [x] Add an explicit Visible list only export checkbox that exports active filtered records when enabled
 - [x] Add selection/export tests, visually verify the directory and office rankings views, and publish (114 tests passing; typecheck clean; mobile routes checked)
+- [x] Replace separate select checkboxes with mutually exclusive visible-list categories: Agents, Offices/Brokers, and Principal/Managing Brokers (now backed by distinct agent, office, and broker projections)
+- [x] Include both principal and managing broker roles in the broker-role category with explicit role labels
+- [x] Add category-filter regression tests, visually verify each list mode, and publish (117 tests passing; responsive routes checked; final checkpoint pending)
+- [x] Build a distinct office-only directory projection so Offices / Brokers is not the same record set as Principal / Managing Brokers
+- [x] Add regression coverage for agents-only, office-only, and principal/managing-broker record sets, then publish the correction (116 tests passing; responsive routes checked)
+- [x] Add behavioral tests exercising buildDirectory to prove agents, offices, and principal/managing brokers are distinct record sets (117 tests passing)
+- [ ] Save a checkpoint after the corrected category logic and verify the live dashboard behavior
