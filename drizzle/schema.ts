@@ -289,3 +289,35 @@ export const pairingDiscoverySchedules = mysqlTable(
 
 export type PairingDiscoverySchedule = typeof pairingDiscoverySchedules.$inferSelect;
 export type InsertPairingDiscoverySchedule = typeof pairingDiscoverySchedules.$inferInsert;
+/** Inactive provider connection profile for Big Purple Dot or a future licensed data source. Secrets are never stored here. */
+export const providerConnections = mysqlTable(
+  "provider_connections",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerOpenId: varchar("owner_open_id", { length: 64 }).notNull().unique(),
+    provider: varchar("provider", { length: 80 }).default("Big Purple Dot").notNull(),
+    product: varchar("product", { length: 120 }),
+    connectionMode: varchar("connection_mode", { length: 32 }).default("not_configured").notNull(),
+    baseUrl: text("base_url"),
+    apiKeyEnvVar: varchar("api_key_env_var", { length: 120 }),
+    oauthClientIdEnvVar: varchar("oauth_client_id_env_var", { length: 120 }),
+    webhookSecretEnvVar: varchar("webhook_secret_env_var", { length: 120 }),
+    webhookPath: varchar("webhook_path", { length: 255 }),
+    territoryScope: varchar("territory_scope", { length: 255 }).default("Oregon"),
+    historicalDepth: varchar("historical_depth", { length: 64 }),
+    fieldMappingJson: text("field_mapping_json"),
+    pairingThreshold: int("pairing_threshold").default(3).notNull(),
+    pairingLookbackDays: int("pairing_lookback_days").default(365).notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    readinessStatus: varchar("readiness_status", { length: 32 }).default("needs_credentials").notNull(),
+    lastSyncAt: timestamp("last_sync_at"),
+    lastSyncStatus: varchar("last_sync_status", { length: 32 }),
+    lastSyncMessage: text("last_sync_message"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ ownerIdx: index("provider_connections_owner_idx").on(table.ownerOpenId) }),
+);
+
+export type ProviderConnection = typeof providerConnections.$inferSelect;
+export type InsertProviderConnection = typeof providerConnections.$inferInsert;

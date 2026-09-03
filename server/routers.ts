@@ -315,6 +315,51 @@ export const appRouter = router({
       .mutation(({ input }) => db.setLoanOfficerAgentPairingStatus(input.id, "rejected").then(() => ({ success: true }))),
   }),
 
+  /** Inactive Big Purple Dot setup profile; credentials stay in secure configuration. */
+  bigPurpleDot: router({
+    status: sessionProcedure.query(() => db.getProviderConnectionByOwner("mike.ford")),
+    save: sessionProcedure
+      .input(z.object({
+        product: z.string().max(120).optional().nullable(),
+        connectionMode: z.enum(["not_configured", "api", "oauth", "webhook", "licensed_export"]).default("not_configured"),
+        baseUrl: z.string().url().max(2000).optional().or(z.literal("")),
+        apiKeyEnvVar: z.string().max(120).optional().nullable(),
+        oauthClientIdEnvVar: z.string().max(120).optional().nullable(),
+        webhookSecretEnvVar: z.string().max(120).optional().nullable(),
+        webhookPath: z.string().max(255).optional().nullable(),
+        territoryScope: z.string().max(255).default("Oregon"),
+        historicalDepth: z.string().max(64).optional().nullable(),
+        fieldMappingJson: z.string().max(20000).optional().nullable(),
+        pairingThreshold: z.number().int().min(1).max(50).default(3),
+        pairingLookbackDays: z.number().int().min(30).max(730).default(365),
+        enabled: z.boolean().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        const ownerOpenId = "mike.ford";
+        const existing = await db.getProviderConnectionByOwner(ownerOpenId);
+        const fields = {
+          provider: "Big Purple Dot",
+          product: input.product ?? null,
+          connectionMode: input.connectionMode,
+          baseUrl: input.baseUrl || null,
+          apiKeyEnvVar: input.apiKeyEnvVar ?? null,
+          oauthClientIdEnvVar: input.oauthClientIdEnvVar ?? null,
+          webhookSecretEnvVar: input.webhookSecretEnvVar ?? null,
+          webhookPath: input.webhookPath ?? null,
+          territoryScope: input.territoryScope,
+          historicalDepth: input.historicalDepth ?? null,
+          fieldMappingJson: input.fieldMappingJson ?? null,
+          pairingThreshold: input.pairingThreshold,
+          pairingLookbackDays: input.pairingLookbackDays,
+          enabled: input.enabled,
+          readinessStatus: input.connectionMode === "not_configured" ? "needs_credentials" : "awaiting_provider_validation",
+        };
+        return existing
+          ? db.updateProviderConnection(existing.id, fields)
+          : db.insertProviderConnection({ ownerOpenId, ...fields });
+      }),
+  }),
+
   /** "Update Current Top Agents" verification queue. */
   verification: router({
     /** Trigger an automated sweep of the selected state's agents. */

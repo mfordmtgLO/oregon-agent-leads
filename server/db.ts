@@ -16,6 +16,8 @@ import {
   propertyTransactions,
   pairingDiscoverySchedules,
   InsertPairingDiscoverySchedule,
+  providerConnections,
+  InsertProviderConnection,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -435,5 +437,27 @@ export async function updatePairingDiscoverySchedule(id: number, fields: Partial
   if (!db) throw new Error("Database not available");
   await db.update(pairingDiscoverySchedules).set(fields).where(eq(pairingDiscoverySchedules.id, id));
   const rows = await db.select().from(pairingDiscoverySchedules).where(eq(pairingDiscoverySchedules.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getProviderConnectionByOwner(ownerOpenId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(providerConnections).where(eq(providerConnections.ownerOpenId, ownerOpenId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function insertProviderConnection(row: InsertProviderConnection) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(providerConnections).values(row);
+  return getProviderConnectionByOwner(row.ownerOpenId);
+}
+
+export async function updateProviderConnection(id: number, fields: Partial<InsertProviderConnection>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(providerConnections).set(fields).where(eq(providerConnections.id, id));
+  const rows = await db.select().from(providerConnections).where(eq(providerConnections.id, id)).limit(1);
   return rows[0] ?? null;
 }

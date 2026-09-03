@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import OfficeRankings from "./pages/OfficeRankings";
 import ReviewQueue from "./pages/ReviewQueue";
 import Pairings from "./pages/Pairings";
+import BigPurpleDotSetup from "./pages/BigPurpleDotSetup";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
         <Route path={"/offices"} component={OfficeRankings} />
         <Route path={"/review"} component={ReviewQueue} />
         <Route path={"/pairings"} component={Pairings} />
+        <Route path={"/big-purple-dot"} component={BigPurpleDotSetup} />
         <Route path={"/add"} component={AddAgent} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
