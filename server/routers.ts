@@ -17,6 +17,7 @@ import { agentsToCsv } from "./csv";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import { DEFAULT_STATE, US_STATES } from "@shared/states";
+import { buildDirectory } from "@shared/brokerDirectory";
 import {
   ingestResearchFindings,
   researchFindingSchema,
@@ -243,10 +244,11 @@ export const appRouter = router({
         return { success: true } as const;
       }),
     exportCsv: sessionProcedure
-      .input(z.object({ state: stateSchema.optional(), ids: z.array(z.number().int()).optional() }).optional())
+      .input(z.object({ state: stateSchema.optional(), ids: z.array(z.number().int()).optional(), recordType: z.enum(["agent", "office", "principal_broker"]).optional() }).optional())
       .mutation(async ({ input }) => {
       const all = await db.listAgents(input?.state);
-      const scoped = input?.ids?.length ? all.filter(agent => input.ids!.includes(agent.id)) : all;
+      const directory = input?.recordType ? buildDirectory(all).filter(record => record.recordType === input.recordType) : all;
+      const scoped = input?.ids?.length ? directory.filter(record => input.ids!.includes(record.id)) : directory;
       const sorted = [...scoped].sort((a, b) => {
         const ra = a.realtrendsRank ?? Number.MAX_SAFE_INTEGER;
         const rb = b.realtrendsRank ?? Number.MAX_SAFE_INTEGER;

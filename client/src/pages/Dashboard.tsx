@@ -171,7 +171,7 @@ export default function Dashboard() {
         data.csv,
         variables?.state ? variables.state.toLowerCase().replace(/\s+/g, "-") : "all-states",
       );
-      toast.success(`Exported ${data.count} agents to CSV`);
+      toast.success(`Exported ${data.count} ${variables?.recordType === "office" ? "offices" : variables?.recordType === "principal_broker" ? "principal/managing brokers" : "agents"} to CSV`);
     },
     onError: err => toast.error(err.message || "Export failed"),
   });
@@ -198,7 +198,8 @@ export default function Dashboard() {
     return sorted;
   }, [agents, categoryRecords, query, scope, sortKey, sortDir]);
 
-  const selectedVisibleIds = filtered.filter(record => record.recordType === "agent" && selectedRecordIds.includes(record.id)).map(record => record.id);
+  const exportRecordType = directoryCategory === "agents" ? "agent" : directoryCategory === "offices" ? "office" : "principal_broker";
+  const selectedVisibleIds = filtered.filter(record => selectedRecordIds.includes(record.id)).map(record => record.id);
   const toggleRecord = (id: number, checked: boolean) => setSelectedRecordIds(current => checked ? Array.from(new Set([...current, id])) : current.filter(existing => existing !== id));
   const selectVisible = (recordType: "agent" | "principal_broker", checked: boolean) => setSelectedRecordIds(current => { const ids = filtered.filter(record => record.recordType === recordType).map(record => record.id); return checked ? Array.from(new Set([...current, ...ids])) : current.filter(id => !ids.includes(id)); });
 
@@ -250,13 +251,13 @@ export default function Dashboard() {
             <DropdownMenuContent align="end" className="rounded-none"><label className="flex items-center gap-2 px-2 py-2 eyebrow cursor-pointer"><input type="checkbox" checked={visibleListOnly} onChange={event => setVisibleListOnly(event.target.checked)} /> Visible list only</label><DropdownMenuSeparator />
               <DropdownMenuItem
                 className="eyebrow rounded-none cursor-pointer"
-                onClick={() => exportMutation.mutate(visibleListOnly ? { state, ids: selectedVisibleIds.length ? selectedVisibleIds : filtered.filter(record => record.recordType === "agent").map(record => record.id) } : { state })}
+                onClick={() => exportMutation.mutate(visibleListOnly ? { state, recordType: exportRecordType, ids: selectedVisibleIds.length ? selectedVisibleIds : filtered.map(record => record.id) } : { state })}
               >
                 {state} only
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="eyebrow rounded-none cursor-pointer"
-                onClick={() => exportMutation.mutate(visibleListOnly ? { ids: selectedVisibleIds.length ? selectedVisibleIds : filtered.filter(record => record.recordType === "agent").map(record => record.id) } : {})}
+                onClick={() => exportMutation.mutate(visibleListOnly ? { recordType: exportRecordType, ids: selectedVisibleIds.length ? selectedVisibleIds : filtered.map(record => record.id) } : {})}
               >
                 All states
               </DropdownMenuItem>

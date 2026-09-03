@@ -155,3 +155,9 @@
 - [x] Add regression coverage for agents-only, office-only, and principal/managing-broker record sets, then publish the correction (116 tests passing; responsive routes checked)
 - [x] Add behavioral tests exercising buildDirectory to prove agents, offices, and principal/managing brokers are distinct record sets (117 tests passing)
 - [x] Save a checkpoint after the corrected category logic and verify the live dashboard behavior (live root, /offices, /review, and /pairings returned HTTP 200; deployed bundle verified) (checkpoint 3984dcc7; protected live route and responsive preview verified)
+- [x] Make Visible list only export the active post-search/post-sort category projection, not the default 60-agent dataset
+- [x] Export agents, offices, and principal/managing brokers with category-correct rows and matching counts (category-specific CSV rows and visible-count behavior tested)
+- [x] Add regression tests for filtered counts such as 5 agents, 45 offices, and broker-only exports; visually verify and publish (119 tests passing; category-aware export contract and responsive shell verified)
+- [x] Add behavioral export tests for exact filtered counts across agent, office, and principal/managing-broker categories (119 tests passing)
+- [x] Add explicit record-category and broker-role columns to office/broker CSV rows
+- [x] Visually verify category-aware exports and save a final checkpoint with live-route confirmation

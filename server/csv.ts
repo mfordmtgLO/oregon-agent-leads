@@ -1,4 +1,7 @@
 import type { Agent } from "../drizzle/schema";
+import type { DirectoryRecord } from "@shared/brokerDirectory";
+
+type CsvRecord = Agent | DirectoryRecord;
 
 function csvEscape(value: unknown): string {
   const s = value === null || value === undefined ? "" : String(value);
@@ -9,6 +12,8 @@ function csvEscape(value: unknown): string {
 }
 
 export const CSV_HEADERS = [
+  "Record Category",
+  "Broker Role",
   "Full Name",
   "State",
   "Brokerage",
@@ -35,9 +40,11 @@ export const CSV_HEADERS = [
   "Notes",
 ];
 
-export function agentsToCsv(agents: Agent[]): string {
+export function agentsToCsv(agents: CsvRecord[]): string {
   const rows = agents.map(a =>
     [
+      "recordType" in a ? a.recordType : "agent",
+      "recordType" in a && a.recordType === "principal_broker" ? a.principalBrokerTitle : "",
       a.fullName,
       a.state,
       a.brokerage,

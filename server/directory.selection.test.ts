@@ -17,5 +17,7 @@ describe("directory selection and export contract", () => {
     expect(offices).toContain("Select all visible offices");
     expect(dashboard).toContain("Visible list only");
     expect(dashboard).toContain("ids: selectedVisibleIds");
+    expect(dashboard).toContain("recordType: exportRecordType");
+    expect(dashboard).toContain("filtered.map(record => record.id)");
   });
 });
