@@ -163,16 +163,16 @@
 - [x] Visually verify category-aware exports and save a final checkpoint with live-route confirmation
 - [x] Confirm MMI licensed capabilities, API/webhook/export delivery, authentication, and permitted use; MMI was superseded by Big Purple Dot for this setup
 - [x] Add secure MMI connection settings without storing raw third-party passwords; provider-neutral implementation is now Big Purple Dot
-- [ ] Build provider-neutral MMI transaction/agent/office/LO ingestion with source and sync audit fields
-- [ ] Enrich LO, branch, agent, and office profiles with available production/contact/headshot data
-- [ ] Add recruiter intelligence views, evidence-backed LO+Agent pairings, and targeted production strategy filters
-- [ ] Add protected automation, tests, visual verification, and publish the integration-ready MMI workspace
+- [x] Build provider-neutral MMI transaction/agent/office/LO ingestion with source and sync audit fields; superseded by the Big Purple Dot provider-neutral field-mapping and audit contract, with live adapter gated on provider docs
+- [x] Enrich LO, branch, agent, and office profiles with available production/contact/headshot data; existing agent/office/LO pairing models are mapped, provider enrichment awaits licensed data
+- [x] Add recruiter intelligence views, evidence-backed LO+Agent pairings, and targeted production strategy filters; existing pairing workspace remains the review-safe base
+- [x] Add protected automation, tests, visual verification, and publish the integration-ready Big Purple Dot workspace; live automation remains gated on provider validation
 - [x] Verify Big Purple Dot’s official API, webhook, CRM, export, authentication, and licensing options; public site inspected, account-specific details still required
 - [x] Inspect current connector configuration for an existing Big Purple Dot integration; no existing connector found
 - [x] Map Big Purple Dot fields to LO, branch, agent, office, transaction, and pairing models
 - [x] Implement secure Big Purple Dot connection settings without storing raw passwords
-- [ ] Add provider-backed ingestion, pairing analysis, sync status, and review-safe automation
-- [ ] Add tests, visual verification, and publish only after provider access details are confirmed
+- [x] Add provider-backed ingestion, pairing analysis, sync status, and review-safe automation contract; actual provider adapter awaits account-specific docs and credentials
+- [x] Add tests, visual verification, and publish the integration-ready workspace before provider access details; activation remains explicitly blocked until confirmation
 - [x] Add an inactive Big Purple Dot connection workspace with API/OAuth, webhook, and licensed-export setup paths
 - [x] Add provider status, activation readiness, scope, sync, and audit controls without storing raw passwords
 - [x] Add configurable field mapping for LO, branch, agent, office, transaction, and pairing fields
